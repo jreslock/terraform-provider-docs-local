@@ -1,0 +1,32 @@
+# This file is used to configure the Terraform provider documentation
+# It specifies the target directory for cloned provider repositories
+# and the list of providers and their respective repository names
+target_dir: /Users/jreslock/docs/terraform-providers
+providers:
+  aws:
+    repo: "hashicorp/terraform-provider-aws"
+    description: AWS provider for Terraform
+  awscc:
+    repo: "hashicorp/terraform-provider-awscc"
+    description: AWS Cloud Control provider for Terraform
+  databricks:
+    repo: "databricks/terraform-provider-databricks"
+    description: Databricks provider for Terraform
+  external:
+    repo: "hashicorp/terraform-provider-external"
+    description: External provider for Terraform
+  github:
+    repo: "integrations/terraform-provider-github"
+    description: GitHub provider for Terraform
+  random:
+    repo: "hashicorp/terraform-provider-random"
+    description: Random provider for Terraform
+  snowflake:
+    repo: "snowflake-labs/terraform-provider-snowflake"
+    description: Snowflake provider for Terraform
+  sumologic:
+    repo: "sumologic/terraform-provider-sumologic"
+    description: SumoLogic provider for Terraform
+  time:
+    repo: "hashicorp/terraform-provider-time"
+    description: Time provider for Terraform

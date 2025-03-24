@@ -1,0 +1,125 @@
+version: '3'
+
+vars:
+  BINARY_NAME: terraform-provider-docs-local
+  GO_VERSION: '1.22'
+  ARTIFACTS_DIR: artifacts
+
+tasks:
+  default:
+    cmds:
+      - task --list-all
+    silent: true
+
+  build:
+    desc: Build the binary
+    cmds:
+      - mkdir -p {{.ARTIFACTS_DIR}}
+      - go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}} main.go
+
+  build-all:
+    desc: Build for multiple architectures
+    cmds:
+      - mkdir -p {{.ARTIFACTS_DIR}}
+      - GOOS=darwin GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-amd64 main.go
+      - GOOS=darwin GOARCH=arm64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-arm64 main.go
+      - GOOS=linux GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-linux-amd64 main.go
+      - GOOS=linux GOARCH=arm64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-linux-arm64 main.go
+      - GOOS=windows GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe main.go
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  lint:
+    desc: Run linters
+    cmds:
+      - go vet ./...
+      - golangci-lint run
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.ARTIFACTS_DIR}}
+      - rm -rf dist/
+
+  version:
+    desc: Show current version
+    cmds:
+      - svu current
+
+  bump-patch:
+    desc: Bump patch version
+    cmds:
+      - svu patch
+      - task changelog
+
+  bump-minor:
+    desc: Bump minor version
+    cmds:
+      - svu minor
+      - task changelog
+
+  bump-major:
+    desc: Bump major version
+    cmds:
+      - svu major
+      - task changelog
+
+  changelog:
+    desc: Generate changelog
+    cmds:
+      - git-chglog -o CHANGELOG.md
+
+  release:
+    desc: Create a new release
+    deps: [build-all, changelog]
+    cmds:
+      - goreleaser release --clean
+
+  release-snapshot:
+    desc: Create a snapshot release
+    deps: [build-all]
+    cmds:
+      - goreleaser release --snapshot --clean
+
+  brew-tap:
+    desc: Update Homebrew tap
+    cmds:
+      - |
+        if [ -z "$${GITHUB_TOKEN}" ]; then
+          echo "Error: GITHUB_TOKEN environment variable is not set"
+          exit 1
+        fi
+        curl -X POST \
+          -H "Authorization: token $${GITHUB_TOKEN}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/jreslock/homebrew-tap/actions/workflows/update-formula.yml/dispatches \
+          -d '{"ref":"main"}'
+
+  pre-commit-install:
+    desc: Install pre-commit hooks
+    cmds:
+      - pre-commit install
+
+  pre-commit-uninstall:
+    desc: Uninstall pre-commit hooks
+    cmds:
+      - pre-commit uninstall
+
+  pre-commit-run:
+    desc: Run pre-commit hooks on all files
+    cmds:
+      - pre-commit run --all-files
+
+  pre-commit-update:
+    desc: Update pre-commit hooks to latest versions
+    cmds:
+      - pre-commit autoupdate
+
+  setup-dev:
+    desc: Set up development environment
+    cmds:
+      - task pre-commit-install
+      - task pre-commit-run
