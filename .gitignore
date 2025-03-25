@@ -41,3 +41,7 @@ terraform-provider-docs-local-*
 # Temporary files
 tmp/
 temp/
+
+# Local devcontainer overrides
+.devcontainer/devcontainer.local.json
+.devcontainer/setup-local.sh

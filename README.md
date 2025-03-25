@@ -13,7 +13,7 @@ A tool for managing local copies of Terraform provider documentation. This tool 
 
 ## Requirements
 
-This tool expects providers to have a standard repository structure with a top-level `docs` directory. Providers with non-standard documentation locations (such as SumoLogic's provider) are not supported.
+This tool expects providers to have a standard repository structure with a top-level `docs` or `website/docs` directory.
 
 ## Installation
 
@@ -33,8 +33,7 @@ Download the latest release for your platform from the [releases page](https://g
 ```bash
 git clone https://github.com/jreslock/terraform-provider-docs-local.git
 cd terraform-provider-docs-local
-mkdir -p artifacts
-go build -o artifacts/terraform-provider-docs-local main.go
+go build
 ```
 
 ## Usage
@@ -121,7 +120,7 @@ You can either install the prerequisites locally or use the provided devcontaine
 
 The devcontainer includes all required tools and is pre-configured with:
 
-- Go 1.21
+- Go
 - Task
 - svu
 - goreleaser
@@ -149,9 +148,6 @@ task release
 
 # Create a snapshot release
 task release-snapshot
-
-# Update Homebrew tap
-task brew-tap
 ```
 
 ### Setting up Pre-commit Hooks

@@ -13,12 +13,14 @@ tasks:
 
   build:
     desc: Build the binary
+    deps: [clean]
     cmds:
       - mkdir -p {{.ARTIFACTS_DIR}}
       - go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}} main.go
 
   build-all:
     desc: Build for multiple architectures
+    deps: [clean]
     cmds:
       - mkdir -p {{.ARTIFACTS_DIR}}
       - GOOS=darwin GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-amd64 main.go
@@ -29,6 +31,7 @@ tasks:
 
   test:
     desc: Run tests
+    deps: [build]
     cmds:
       - go test ./...
 
@@ -51,65 +54,51 @@ tasks:
 
   bump-patch:
     desc: Bump patch version
+    deps: [test, lint]
     cmds:
       - svu patch
       - task changelog
 
   bump-minor:
     desc: Bump minor version
+    deps: [test, lint]
     cmds:
       - svu minor
       - task changelog
 
   bump-major:
     desc: Bump major version
+    deps: [test, lint]
     cmds:
       - svu major
       - task changelog
 
   changelog:
     desc: Generate changelog
+    deps: [clean]
     cmds:
       - git-chglog -o CHANGELOG.md
 
   release:
     desc: Create a new release
-    deps: [build-all, changelog]
+    deps: [build-all, changelog, test, lint]
     cmds:
       - goreleaser release --clean
 
   release-snapshot:
     desc: Create a snapshot release
-    deps: [build-all]
+    deps: [build-all, test, lint]
     cmds:
       - goreleaser release --snapshot --clean
-
-  brew-tap:
-    desc: Update Homebrew tap
-    cmds:
-      - |
-        if [ -z "$${GITHUB_TOKEN}" ]; then
-          echo "Error: GITHUB_TOKEN environment variable is not set"
-          exit 1
-        fi
-        curl -X POST \
-          -H "Authorization: token $${GITHUB_TOKEN}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/jreslock/homebrew-tap/actions/workflows/update-formula.yml/dispatches \
-          -d '{"ref":"main"}'
 
   pre-commit-install:
     desc: Install pre-commit hooks
     cmds:
       - pre-commit install
 
-  pre-commit-uninstall:
-    desc: Uninstall pre-commit hooks
-    cmds:
-      - pre-commit uninstall
-
   pre-commit-run:
     desc: Run pre-commit hooks on all files
+    deps: [pre-commit-install]
     cmds:
       - pre-commit run --all-files
 

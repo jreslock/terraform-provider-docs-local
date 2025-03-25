@@ -1,0 +1,57 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:base"
+    ],
+    "schedule": [
+        "every weekend"
+    ],
+    "prHourlyLimit": 0,
+    "prConcurrentLimit": 5,
+    "draftPR": true,
+    "labels": [
+        "dependencies"
+    ],
+    "packageRules": [
+        {
+            "matchUpdateTypes": [
+                "minor",
+                "patch"
+            ],
+            "matchCurrentVersion": "!/^0/",
+            "automerge": false
+        },
+        {
+            "matchUpdateTypes": [
+                "major"
+            ],
+            "labels": [
+                "major-update"
+            ]
+        }
+    ],
+    "golang": {
+        "enabled": true,
+        "postUpdateOptions": [
+            "gomodTidy"
+        ]
+    },
+    "vulnerabilityAlerts": {
+        "enabled": true,
+        "labels": [
+            "security"
+        ]
+    },
+    "ignorePaths": [
+        "**/artifacts/**",
+        "**/vendor/**",
+        "**/test/**"
+    ],
+    "semanticCommits": "enabled",
+    "commitMessageAction": "chore",
+    "commitMessageTopic": "{{depName}}",
+    "commitMessageExtra": "to {{newVersion}}",
+    "commitMessageSuffix": "",
+    "commitBodyTable": true,
+    "commitBody": "{{updatedPackageData}}"
+}

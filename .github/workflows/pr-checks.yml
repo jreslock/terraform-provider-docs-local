@@ -1,0 +1,31 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  checks:
+    name: Run Checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up devcontainer
+        uses: devcontainers/ci@v0.4.0
+        with:
+          workspaceFolder: ${{ github.workspace }}
+          devcontainerPath: .devcontainer/devcontainer.json
+
+      - name: Run linters
+        run: task lint
+
+      - name: Run pre-commit hooks
+        run: task pre-commit-run
+
+      - name: Build
+        run: task build
+
+      - name: Run tests
+        run: task test
