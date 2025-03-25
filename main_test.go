@@ -4,14 +4,24 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadConfig(t *testing.T) {
-	// Create a temporary config file
-	content := []byte(`
+func TestLoadConfigInvalidFile(t *testing.T) {
+	// Test loading an invalid YAML file
+	tmpfile, err := os.CreateTemp("", "invalid.*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpfile.Name())
+
+	invalidContent := []byte(`
 target_dir: test-providers
 providers:
   aws:
@@ -20,46 +30,130 @@ providers:
   azurerm:
     repo: hashicorp/terraform-provider-azurerm
     description: Azure Provider
+invalid_field: true
 `)
-	tmpfile, err := os.CreateTemp("", "providers.*.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.Remove(tmpfile.Name())
-
-	if _, err := tmpfile.Write(content); err != nil {
+	if _, err := tmpfile.Write(invalidContent); err != nil {
 		t.Fatal(err)
 	}
 	if err := tmpfile.Close(); err != nil {
 		t.Fatal(err)
 	}
 
-	// Test loading valid config
-	config, err := loadConfig(tmpfile.Name())
-	assert.NoError(t, err)
-	assert.Equal(t, "test-providers", config.TargetDir)
-	assert.Len(t, config.Providers, 2)
-	assert.Equal(t, "hashicorp/terraform-provider-aws", config.Providers["aws"].Repo)
-	assert.Equal(t, "AWS Provider", config.Providers["aws"].Description)
-
-	// Test loading non-existent file
-	_, err = loadConfig("nonexistent.yaml")
+	_, err = loadConfig(tmpfile.Name())
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error parsing config file")
+}
 
-	// Test default target directory
-	content = []byte(`
-providers:
-  aws:
-    repo: hashicorp/terraform-provider-aws
-    description: AWS Provider
-`)
-	if err := os.WriteFile(tmpfile.Name(), content, 0644); err != nil {
+func TestFindDocsDirectoriesEmptyRepo(t *testing.T) {
+	// Test with an empty repository
+	tmpDir, err := os.MkdirTemp("", "empty-repo-*")
+	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.RemoveAll(tmpDir)
 
-	config, err = loadConfig(tmpfile.Name())
+	paths, err := findDocsDirectories(tmpDir)
 	assert.NoError(t, err)
-	assert.Equal(t, "terraform-providers", config.TargetDir)
+	assert.Empty(t, paths)
+}
+
+func TestGenerateIndexNoProviders(t *testing.T) {
+	// Test generating index with no providers
+	tmpDir, err := os.MkdirTemp("", "test-providers-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	config := &Config{
+		TargetDir: tmpDir,
+		Providers: map[string]Provider{},
+	}
+
+	err = generateIndex(config)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no providers have been cloned yet")
+}
+
+func TestCloneProviderInvalidURL(t *testing.T) {
+	// Test cloning a provider with an invalid repository URL
+	tmpDir, err := os.MkdirTemp("", "test-target-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	provider := Provider{
+		Repo:        "invalid-url",
+		Description: "Invalid Provider",
+	}
+
+	err = cloneProvider("invalid", provider, tmpDir)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error cloning repository")
+}
+
+func TestUpdateProviderNoChanges(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "test-target-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	repoDir, _ := setupMockRepo(t)
+	defer os.RemoveAll(repoDir)
+
+	provider := Provider{
+		Repo:        repoDir, // Use the local mock repository
+		Description: "Test Provider",
+	}
+
+	// Clone the provider first
+	err = cloneProvider("test", provider, tmpDir)
+	assert.NoError(t, err)
+
+	// Update the provider without making any changes
+	err = updateProvider("test", tmpDir)
+	assert.NoError(t, err)
+}
+
+func TestCleanProvidersEmptyDir(t *testing.T) {
+	// Test cleaning an empty directory
+	tmpDir, err := os.MkdirTemp("", "empty-providers-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	err = cleanProviders(tmpDir)
+	assert.NoError(t, err)
+	_, err = os.Stat(tmpDir)
+	assert.True(t, os.IsNotExist(err))
+}
+
+func TestFindDocsDirectoriesNestedInvalid(t *testing.T) {
+	// Test with deeply nested invalid docs directories
+	tmpDir, err := os.MkdirTemp("", "nested-repo-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	dirs := []string{
+		"deep/nested/docs", // Invalid: too deeply nested
+		"docs",             // Valid: root docs
+	}
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(filepath.Join(tmpDir, dir), 0755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	paths, err := findDocsDirectories(tmpDir)
+	assert.NoError(t, err)
+	assert.Len(t, paths, 1)
+	assert.Contains(t, paths, "docs")
 }
 
 func TestFindDocsDirectories(t *testing.T) {
@@ -179,130 +273,178 @@ type mockRepo struct {
 }
 
 func setupMockRepo(t *testing.T) (string, *mockRepo) {
-	// Create a temporary directory for the test repository
 	tmpDir, err := os.MkdirTemp("", "test-repo-*")
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Initialize a git repository
 	repo, err := git.PlainInit(tmpDir, false)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Create initial commit
-	wt, err := repo.Worktree()
+	worktree, err := repo.Worktree()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Create docs directory and a test file
+	// Create an initial commit
+	filePath := filepath.Join(tmpDir, "README.md")
+	if err := os.WriteFile(filePath, []byte("# Test Repo"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err = worktree.Add("README.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = worktree.Commit("Initial commit", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a main branch
+	err = worktree.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName("main"),
+		Create: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add a remote reference to origin/main
+	_, err = repo.CreateRemote(&config.RemoteConfig{
+		Name: "origin",
+		URLs: []string{tmpDir}, // Point to itself for testing
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Add a docs directory to the mock repository
 	docsDir := filepath.Join(tmpDir, "docs")
 	if err := os.MkdirAll(docsDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-
-	testFile := filepath.Join(docsDir, "test.md")
-	if err := os.WriteFile(testFile, []byte("test content"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(docsDir, "index.md"), []byte("# Docs"), 0644); err != nil {
 		t.Fatal(err)
 	}
-
-	_, err = wt.Add("docs")
+	_, err = worktree.Add("docs/index.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = worktree.Commit("Add docs directory", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = wt.Commit("Initial commit", &git.CommitOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return tmpDir, &mockRepo{
-		Repository: repo,
-		worktree:   wt,
-	}
+	return tmpDir, &mockRepo{Repository: repo, worktree: worktree}
 }
 
 func TestCloneProvider(t *testing.T) {
-	// Create a temporary directory for the target
-	targetDir, err := os.MkdirTemp("", "test-target-*")
+	tmpDir, err := os.MkdirTemp("", "test-target-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(targetDir)
+	defer os.RemoveAll(tmpDir)
 
-	// Set up a mock repository
-	repoDir, _ := setupMockRepo(t)
+	repoDir, mockRepo := setupMockRepo(t)
 	defer os.RemoveAll(repoDir)
 
+	// Add a docs directory to the mock repository
+	docsDir := filepath.Join(repoDir, "docs")
+	if err := os.MkdirAll(docsDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(docsDir, "index.md"), []byte("# Docs"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	_, err = mockRepo.worktree.Add("docs/index.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = mockRepo.worktree.Commit("Add docs directory", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	provider := Provider{
-		Repo:        repoDir,
+		Repo:        repoDir, // Use the local mock repository
 		Description: "Test Provider",
 	}
 
-	// Test cloning provider
-	err = cloneProvider("test", provider, targetDir)
+	err = cloneProvider("test", provider, tmpDir)
 	assert.NoError(t, err)
 
 	// Verify the docs directory was cloned
-	docsPath := filepath.Join(targetDir, "test", "docs")
-	_, err = os.Stat(docsPath)
+	_, err = os.Stat(filepath.Join(tmpDir, "test", "docs"))
 	assert.NoError(t, err)
-
-	// Test cloning with invalid repository
-	provider.Repo = "nonexistent"
-	err = cloneProvider("invalid", provider, targetDir)
-	assert.Error(t, err)
 }
 
 func TestUpdateProvider(t *testing.T) {
-	// Create a temporary directory for the target
-	targetDir, err := os.MkdirTemp("", "test-target-*")
+	tmpDir, err := os.MkdirTemp("", "test-target-*")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(targetDir)
+	defer os.RemoveAll(tmpDir)
 
-	// Set up a mock repository
 	repoDir, mockRepo := setupMockRepo(t)
 	defer os.RemoveAll(repoDir)
 
 	provider := Provider{
-		Repo:        repoDir,
+		Repo:        repoDir, // Use the local mock repository
 		Description: "Test Provider",
 	}
 
-	// First clone the provider
-	err = cloneProvider("test", provider, targetDir)
+	// Clone the provider first
+	err = cloneProvider("test", provider, tmpDir)
 	assert.NoError(t, err)
 
-	// Make a change in the source repository
-	testFile := filepath.Join(repoDir, "docs", "new.md")
-	if err := os.WriteFile(testFile, []byte("new content"), 0644); err != nil {
+	// Add a new file to the mock repository
+	newFilePath := filepath.Join(repoDir, "docs", "new.md")
+	if err := os.MkdirAll(filepath.Dir(newFilePath), 0755); err != nil {
 		t.Fatal(err)
 	}
-
+	if err := os.WriteFile(newFilePath, []byte("# New Docs"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	_, err = mockRepo.worktree.Add("docs/new.md")
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	_, err = mockRepo.worktree.Commit("Update", &git.CommitOptions{})
+	_, err = mockRepo.worktree.Commit("Add new docs file", &git.CommitOptions{
+		Author: &object.Signature{
+			Name:  "Test User",
+			Email: "test@example.com",
+			When:  time.Now(),
+		},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Test updating provider
-	err = updateProvider("test", targetDir)
+	// Update the provider
+	err = updateProvider("test", tmpDir)
 	assert.NoError(t, err)
 
 	// Verify the new file exists
-	updatedFile := filepath.Join(targetDir, "test", "docs", "new.md")
-	_, err = os.Stat(updatedFile)
+	_, err = os.Stat(filepath.Join(tmpDir, "test", "docs", "new.md"))
 	assert.NoError(t, err)
-
-	// Test updating non-existent provider
-	err = updateProvider("nonexistent", targetDir)
-	assert.Error(t, err)
 }

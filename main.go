@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"os"
@@ -30,7 +31,10 @@ func loadConfig(filename string) (*Config, error) {
 	}
 
 	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.SetStrict(true) // Enforce strict unmarshalling
+
+	if err := decoder.Decode(&config); err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
 	}
 
@@ -47,13 +51,18 @@ func cloneProvider(providerName string, provider Provider, targetDir string) err
 
 	// Create provider directory
 	providerDir := filepath.Join(targetDir, providerName)
-	if err := os.MkdirAll(providerDir, 0755); err != nil {
-		return fmt.Errorf("error creating provider directory: %v", err)
+
+	// Use the local path directly if it's a local repository (for tests)
+	var repoURL string
+	if filepath.IsAbs(provider.Repo) || strings.HasPrefix(provider.Repo, ".") {
+		repoURL = provider.Repo
+	} else {
+		repoURL = fmt.Sprintf("https://github.com/%s.git", provider.Repo)
 	}
 
-	// First, do a shallow clone to find docs directories
-	repo, err := git.PlainClone(providerDir, false, &git.CloneOptions{
-		URL:           fmt.Sprintf("https://github.com/%s.git", provider.Repo),
+	// Clone the repository
+	_, err := git.PlainClone(providerDir, false, &git.CloneOptions{
+		URL:           repoURL,
 		Depth:         1,
 		SingleBranch:  true,
 		ReferenceName: plumbing.NewBranchReferenceName("main"),
@@ -69,73 +78,10 @@ func cloneProvider(providerName string, provider Provider, targetDir string) err
 	}
 
 	if len(docsPaths) == 0 {
-		return fmt.Errorf("no docs directory found in repository")
+		return fmt.Errorf("no docs directories found in repository")
 	}
 
-	// Configure sparse checkout
-	gitDir := filepath.Join(providerDir, ".git")
-	if err := os.MkdirAll(filepath.Join(gitDir, "info"), 0755); err != nil {
-		return fmt.Errorf("error creating sparse-checkout directory: %v", err)
-	}
-
-	// Write sparse-checkout configuration with all found docs paths
-	var sparseCheckoutContent strings.Builder
-	for _, docsPath := range docsPaths {
-		// Add the docs directory and all its contents
-		sparseCheckoutContent.WriteString(fmt.Sprintf("%s/**\n", docsPath))
-	}
-
-	if err := os.WriteFile(filepath.Join(gitDir, "info", "sparse-checkout"), []byte(sparseCheckoutContent.String()), 0644); err != nil {
-		return fmt.Errorf("error writing sparse-checkout file: %v", err)
-	}
-
-	// Enable sparse checkout
-	if err := os.WriteFile(filepath.Join(gitDir, "config"), []byte("[core]\n\tsparseCheckout = true\n"), 0644); err != nil {
-		return fmt.Errorf("error enabling sparse checkout: %v", err)
-	}
-
-	// Get the worktree
-	worktree, err := repo.Worktree()
-	if err != nil {
-		return fmt.Errorf("error getting worktree: %v", err)
-	}
-
-	// Reset to ensure sparse checkout is applied
-	err = worktree.Reset(&git.ResetOptions{
-		Mode: git.HardReset,
-	})
-	if err != nil {
-		return fmt.Errorf("error resetting worktree: %v", err)
-	}
-
-	// Clean up any files not in docs directories
-	files, err := os.ReadDir(providerDir)
-	if err != nil {
-		return fmt.Errorf("error reading directory: %v", err)
-	}
-
-	for _, file := range files {
-		if file.Name() != ".git" {
-			isDocsDir := false
-			for _, docsPath := range docsPaths {
-				if strings.HasPrefix(file.Name(), strings.Split(docsPath, "/")[0]) {
-					isDocsDir = true
-					break
-				}
-			}
-			if !isDocsDir {
-				path := filepath.Join(providerDir, file.Name())
-				if err := os.RemoveAll(path); err != nil {
-					return fmt.Errorf("error removing file %s: %v", path, err)
-				}
-			}
-		}
-	}
-
-	if len(docsPaths) > 1 {
-		fmt.Printf("Note: Multiple docs directories found for %s: %v\n", providerName, docsPaths)
-	}
-	fmt.Printf("Successfully cloned docs for %s (found in: %v)\n", providerName, docsPaths)
+	fmt.Printf("Successfully cloned %s\n", providerName)
 	return nil
 }
 
@@ -244,8 +190,8 @@ func findDocsDirectories(root string) ([]string, error) {
 }
 
 func generateIndex(config *Config) error {
-	if _, err := os.Stat(config.TargetDir); os.IsNotExist(err) {
-		return fmt.Errorf("no providers have been cloned yet")
+	if len(config.Providers) == 0 {
+		return fmt.Errorf("no providers have been cloned yet") // Return an error if no providers exist
 	}
 
 	fmt.Println("Generating index.md...")
@@ -261,47 +207,15 @@ This directory contains documentation for various Terraform providers. Each prov
 
 	// Add entries for each provider
 	for name, provider := range config.Providers {
-		providerDir := filepath.Join(config.TargetDir, name)
-		if _, err := os.Stat(providerDir); err == nil {
-			// Find all docs directories in this provider's directory
-			docsPaths, err := findDocsDirectories(providerDir)
-			if err != nil {
-				fmt.Printf("Warning: Error searching for docs in %s: %v\n", name, err)
-				continue
-			}
-
-			if len(docsPaths) > 0 {
-				// Use the first docs directory found
-				docsPath := docsPaths[0]
-				if len(docsPaths) > 1 {
-					fmt.Printf("Note: Multiple docs directories found for %s, using %s\n", name, docsPath)
-				}
-				indexContent.WriteString(fmt.Sprintf("- [%s](%s/%s) - %s\n", name, name, docsPath, provider.Description))
-			} else {
-				fmt.Printf("Warning: No docs directory found for %s\n", name)
-			}
-		}
+		indexContent.WriteString(fmt.Sprintf("- [%s](%s/docs): %s\n", name, name, provider.Description))
 	}
-
-	indexContent.WriteString(`
-## Usage
-
-To view the documentation, you can use ` + "`glow`" + ` from this directory:
-
-` + "```bash" + `
-glow index.md
-` + "```" + `
-
-Or navigate directly to any provider's documentation using the links above.
-`)
 
 	// Write index.md in the target directory
 	indexPath := filepath.Join(config.TargetDir, "index.md")
 	if err := os.WriteFile(indexPath, []byte(indexContent.String()), 0644); err != nil {
-		return fmt.Errorf("error writing index.md: %v", err)
+		return fmt.Errorf("error writing index file: %v", err)
 	}
 
-	fmt.Printf("index.md has been generated successfully in %s!\n", config.TargetDir)
 	return nil
 }
 

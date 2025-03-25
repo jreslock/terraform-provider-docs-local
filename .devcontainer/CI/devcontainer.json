@@ -1,13 +1,12 @@
 {
-    "name": "terraform-provider-docs-local",
+    "name": "terraform-provider-docs-local-ci",
     "build": {
-        "dockerfile": "Dockerfile"
+        "dockerfile": "../Dockerfile"
     },
     "customizations": {
         "vscode": {
             "extensions": [
                 "golang.go",
-                "streetsidesoftware.code-spell-checker",
                 "eamodio.gitlens",
                 "ms-azuretools.vscode-docker"
             ],
@@ -27,7 +26,7 @@
             }
         }
     },
-    "postCreateCommand": "task setup-dev",
+    "postCreateCommand": "echo 'Post-Create Done'",
     "remoteUser": "root",
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
     "workspaceFolder": "/workspace"

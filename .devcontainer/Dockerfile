@@ -14,11 +14,10 @@ RUN go install github.com/go-task/task/v3/cmd/task@v3.34.1 && \
     go install github.com/goreleaser/goreleaser@v1.22.1 && \
     go install golang.org/x/tools/cmd/goimports@v0.17.0 && \
     curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2 && \
-    pip install pre-commit && \
-    go install github.com/charmbracelet/glow@v1.5.0
+    pip install pre-commit
 
 # Add Go binaries to PATH
-ENV PATH="/root/go/bin:${PATH}"
+ENV PATH="${PATH}:$(go env GOPATH)/bin"
 
 # Set working directory
 WORKDIR /workspace

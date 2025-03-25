@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# Clone your personal dotfiles repo and run the setup script to install all the things
+# This requires an existing repository named `dotfiles` and a shell script named `setup`
+# at the root of that repository. Rename or copy this file to .devcontainers/LOCAL/setup-local.sh
+# and make it executable (`chmod +x .devcontainer/LOCAL/setup-local.sh`)
+#
+# When launching in a devcontainer, choose LOCAL and the container should build normally and run
+# your setup script as a postCreateCommand.
+#
+# The existing .devcontainer/LOCAL/devcontainer.json will also automatically mount your local
+# ~/.aws/ directory in so your normal profiles will function as if you were on your local system
+#
+
+#git clone https://github.com/username/dotfiles.git $HOME/dotfiles
+#$HOME/dotfiles/setup
