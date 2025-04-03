@@ -25,28 +25,20 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up devcontainer
-        uses: devcontainers/ci@v0.4.0
+      - name: Build devcontainer and generate release artifacts
+        uses: devcontainers/ci@v0.3.1900000417
         with:
-          workspaceFolder: ${{ github.workspace }}
-          devcontainerPath: .devcontainer/devcontainer.json
-
-      - name: Build for all platforms
-        run: task build-all
-
-      - name: Generate changelog
-        if: github.event_name != 'workflow_dispatch' || !github.event.inputs.snapshot
-        run: task changelog
-
-      - name: Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.snapshot }}" = "true" ]; then
-            task release-snapshot
-          else
-            task release
-          fi
+          subFolder: ${{ github.workspace }}
+          configFile: .devcontainer/CI/devcontainer.json
+          runCmd: |
+            task build-all
+            if: github.event_name != 'workflow_dispatch' || !github.event.inputs.snapshot
+              task changelog
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.snapshot }}" = "true" ]; then
+              task release-snapshot
+            else
+              task release
+            fi
 
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v4

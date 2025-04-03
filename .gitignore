@@ -43,5 +43,4 @@ tmp/
 temp/
 
 # Local devcontainer overrides
-.devcontainer/devcontainer.local.json
-.devcontainer/setup-local.sh
+.devcontainer/LOCAL/setup-local.sh
