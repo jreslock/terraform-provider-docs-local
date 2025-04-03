@@ -75,7 +75,6 @@ tasks:
 
   changelog:
     desc: Generate changelog
-    deps: [clean]
     cmds:
       - git-chglog -o CHANGELOG.md
 
