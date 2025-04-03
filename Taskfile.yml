@@ -96,7 +96,6 @@ tasks:
     cmds:
       - pre-commit clean
       - git config --global --add safe.directory /workspace
-      - git rev-parse --is-inside-work-tree
       - pre-commit install
 
   pre-commit-run:
@@ -109,8 +108,3 @@ tasks:
     desc: Update pre-commit hooks to latest versions
     cmds:
       - pre-commit autoupdate
-
-  setup-dev:
-    desc: Set up development environment
-    cmds:
-      - task pre-commit-run
