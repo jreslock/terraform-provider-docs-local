@@ -23,7 +23,7 @@ jobs:
         id: check_label
         run: |
           echo "Checking for bump label..."
-          LABELS=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -r '.[].name')
+          LABELS=$(jq -r '.[].name' < "${{ toJson(github.event.pull_request.labels) }}")
           echo "Labels: $LABELS"
           if echo "$LABELS" | grep -q 'bump:major'; then
             echo "bump=major" >> $GITHUB_ENV
