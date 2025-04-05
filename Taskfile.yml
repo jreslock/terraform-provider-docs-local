@@ -44,42 +44,59 @@ tasks:
     desc: Clean build artifacts
     cmds:
       - rm -rf {{.ARTIFACTS_DIR}}
-      - rm -rf dist/
 
   version:
     desc: Show current version
     cmds:
       - svu current
 
-  bump-patch:
-    desc: Bump patch version
+  bump-version:
+    desc: Bump version (patch, minor, or major)
+    vars:
+      VERSION_TYPE: patch
     deps: [lint, build, test]
     cmds:
-      - svu patch
-      - task changelog
+      - CURRENT_TAG=$(svu current)
+      - NEXT_TAG=$(svu {{.VERSION_TYPE}})
+      - echo "Bumping version from $CURRENT_TAG to $NEXT_TAG"
+      - task changelog -- NEXT_TAG=$NEXT_TAG
+      - git add CHANGELOG.md
+      - git commit -am "Release $NEXT_TAG"
+      - git tag -a $NEXT_TAG -m "Release $NEXT_TAG"
+      - git push origin $NEXT_TAG
+
+  bump-patch:
+    desc: Bump patch version
+    vars:
+      VERSION_TYPE: patch
+    cmds:
+      - task bump-version
 
   bump-minor:
     desc: Bump minor version
-    deps: [lint, build, test]
+    vars:
+      VERSION_TYPE: minor
     cmds:
-      - svu minor
-      - task changelog
+      - task bump-version
 
   bump-major:
     desc: Bump major version
-    deps: [lint, build, test]
+    vars:
+      VERSION_TYPE: major
     cmds:
-      - svu major
-      - task changelog
+      - task bump-version
 
   changelog:
     desc: Generate changelog
+    vars:
+      NEXT_TAG: ""
     cmds:
-      - git-chglog -o CHANGELOG.md
+      - git config --global --add safe.directory /workspace
+      - git-chglog --next-tag {{.NEXT_TAG}} -o CHANGELOG.md
 
   release:
     desc: Create a new release
-    deps: [lint, test, changelog]
+    deps: [lint, test]
     cmds:
       - goreleaser release --clean
 
