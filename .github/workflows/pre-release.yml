@@ -31,8 +31,7 @@ jobs:
           fi
 
           # Output the version bump type
-          echo "VERSION_BUMP=$VERSION_BUMP" >> $GITHUB_ENV
-          echo "::set-output name=bump::$VERSION_BUMP"
+          echo "bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
 
       - name: Build devcontainer and generate CHANGELOG.md
         uses: devcontainers/ci@v0.3.1900000417
