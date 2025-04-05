@@ -10,10 +10,7 @@ on:
 
 jobs:
   pre-release:
-    if: >
-      github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' &&
-      contains(join(' ', github.event.pull_request.labels.*.name), 'bump:')
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
 
     steps:
@@ -22,16 +19,22 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Determine version bump
-        id: version_bump
+      - name: Check for bump label
+        id: check_label
         run: |
-          VERSION_BUMP="patch"
-          if [[ "${{ github.event.pull_request.labels }}" == *"bump:major"* ]]; then
-            VERSION_BUMP="major"
-          elif [[ "${{ github.event.pull_request.labels }}" == *"bump:minor"* ]]; then
-            VERSION_BUMP="minor"
+          echo "Checking for bump label..."
+          LABELS=$(echo "${{ toJson(github.event.pull_request.labels) }}")
+          echo "Labels: $LABELS"
+          if echo "$LABELS" | grep -q '"bump:major"'; then
+            echo "bump=major" >> $GITHUB_ENV
+          elif echo "$LABELS" | grep -q '"bump:minor"'; then
+            echo "bump=minor" >> $GITHUB_ENV
+          elif echo "$LABELS" | grep -q '"bump:patch"'; then
+            echo "bump=patch" >> $GITHUB_ENV
+          else
+            echo "No bump label found. Skipping workflow."
+            exit 0
           fi
-          echo "bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
 
       - name: Build devcontainer and generate CHANGELOG.md
         uses: devcontainers/ci@v0.3.1900000417
@@ -39,4 +42,4 @@ jobs:
           subFolder: ${{ github.workspace }}
           configFile: .devcontainer/CI/devcontainer.json
           runCmd: |
-            task bump-${{ steps.version_bump.outputs.bump }}
+            task bump-${{ env.bump }}
