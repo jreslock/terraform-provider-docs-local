@@ -32,8 +32,9 @@ jobs:
           configFile: .devcontainer/CI/devcontainer.json
           runCmd: |
             task build-all
-            if: github.event_name != 'workflow_dispatch' || !github.event.inputs.snapshot
+            if [ "${{ github.event_name }}" != "workflow_dispatch" ] || [ "${{ github.event.inputs.snapshot }}" ]; then
               task changelog
+            fi
             if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.snapshot }}" = "true" ]; then
               task release-snapshot
             else

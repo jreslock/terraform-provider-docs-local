@@ -31,7 +31,6 @@ tasks:
 
   test:
     desc: Run tests
-    deps: [build]
     cmds:
       - go test ./...
 
@@ -54,21 +53,21 @@ tasks:
 
   bump-patch:
     desc: Bump patch version
-    deps: [test, lint]
+    deps: [lint, build, test]
     cmds:
       - svu patch
       - task changelog
 
   bump-minor:
     desc: Bump minor version
-    deps: [test, lint]
+    deps: [lint, build, test]
     cmds:
       - svu minor
       - task changelog
 
   bump-major:
     desc: Bump major version
-    deps: [test, lint]
+    deps: [lint, build, test]
     cmds:
       - svu major
       - task changelog
@@ -80,13 +79,13 @@ tasks:
 
   release:
     desc: Create a new release
-    deps: [build-all, changelog, test, lint]
+    deps: [lint, test, changelog]
     cmds:
       - goreleaser release --clean
 
   release-snapshot:
     desc: Create a snapshot release
-    deps: [build-all, test, lint]
+    deps: [lint, test]
     cmds:
       - goreleaser release --snapshot --clean
 
