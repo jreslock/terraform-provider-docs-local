@@ -16,7 +16,7 @@
             ],
             "settings": {
                 "go.toolsEnvVars": {
-                    "GOFLAGS": "-mod=mod",
+                    "GOFLAGS": "-mod=mod, -buildvcs=false",
                     "GO111MODULE": "on"
                 },
                 "go.useLanguageServer": true,

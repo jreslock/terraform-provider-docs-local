@@ -2,13 +2,17 @@ name: Pre-Release
 
 on:
   pull_request:
+    branches:
+      - main
     types:
-      - closed # Trigger when a PR is merged
-  workflow_dispatch: # Allow manual triggering
+      - closed
+  workflow_dispatch:
 
 jobs:
   pre-release:
-    if: github.event.pull_request.merged == true # Only run if the PR was merged
+    if: >
+      github.event.pull_request.merged == true &&
+      contains(github.event.pull_request.labels.*.name, 'bump:')
     runs-on: ubuntu-latest
 
     steps:
@@ -18,19 +22,14 @@ jobs:
           fetch-depth: 0
 
       - name: Determine version bump
-        id: version_bump # Add an ID to reference this step
+        id: version_bump
         run: |
-          # Default to patch if no label or pattern is found
           VERSION_BUMP="patch"
-
-          # Check PR labels for version bump
           if [[ "${{ github.event.pull_request.labels }}" == *"bump:major"* ]]; then
             VERSION_BUMP="major"
           elif [[ "${{ github.event.pull_request.labels }}" == *"bump:minor"* ]]; then
             VERSION_BUMP="minor"
           fi
-
-          # Output the version bump type
           echo "bump=$VERSION_BUMP" >> $GITHUB_OUTPUT
 
       - name: Build devcontainer and generate CHANGELOG.md
