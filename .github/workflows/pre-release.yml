@@ -12,7 +12,8 @@ jobs:
   pre-release:
     if: >
       github.event.pull_request.merged == true &&
-      contains(github.event.pull_request.labels.*.name, 'bump:')
+      github.event.pull_request.base.ref == 'main' &&
+      contains(join(' ', github.event.pull_request.labels.*.name), 'bump:')
     runs-on: ubuntu-latest
 
     steps:
