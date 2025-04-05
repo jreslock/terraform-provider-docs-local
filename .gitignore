@@ -44,3 +44,4 @@ temp/
 
 # Local devcontainer overrides
 .devcontainer/LOCAL/setup-local.sh
+.vscode*
