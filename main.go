@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Provider struct {
@@ -30,12 +30,40 @@ func loadConfig(filename string) (*Config, error) {
 		return nil, fmt.Errorf("error reading config file: %v", err)
 	}
 
+	// Check if the YAML file is empty
+	if len(data) == 0 {
+		return nil, fmt.Errorf("error parsing config file: file is empty")
+	}
+
 	var config Config
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
-	decoder.SetStrict(true) // Enforce strict unmarshalling
 
+	// Enable strict decoding to catch unexpected fields
+	decoder.KnownFields(true)
+
+	// Decode the YAML file
 	if err := decoder.Decode(&config); err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
+	}
+
+	// Validate the structure of the decoded YAML
+	if config.Providers == nil && config.TargetDir == "" {
+		return nil, fmt.Errorf("invalid configuration: missing required fields")
+	}
+
+	// Check for unexpected fields in the YAML
+	if len(config.Providers) == 0 && config.TargetDir == "" {
+		return nil, fmt.Errorf("invalid configuration: no valid fields found")
+	}
+
+	// Validate that each provider has a valid repo and description
+	for name, provider := range config.Providers {
+		if provider.Repo == "" {
+			return nil, fmt.Errorf("provider '%s' is missing a 'repo' field", name)
+		}
+		if provider.Description == "" {
+			return nil, fmt.Errorf("provider '%s' is missing a 'description' field", name)
+		}
 	}
 
 	// Set default target directory if not specified

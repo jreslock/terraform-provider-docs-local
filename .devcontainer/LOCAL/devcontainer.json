@@ -16,7 +16,8 @@
             ],
             "settings": {
                 "go.toolsEnvVars": {
-                    "GOFLAGS": "-mod=mod"
+                    "GOFLAGS": "-mod=mod",
+                    "GO111MODULE": "on"
                 },
                 "go.useLanguageServer": true,
                 "go.lintTool": "golangci-lint",

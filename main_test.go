@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/stretchr/testify/assert"
@@ -19,7 +18,11 @@ func TestLoadConfigInvalidFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.Remove(tmpfile.Name())
+	defer func() {
+		if err := os.Remove(tmpfile.Name()); err != nil {
+			t.Fatalf("failed to remove temporary file: %v", err)
+		}
+	}()
 
 	invalidContent := []byte(`
 target_dir: test-providers
@@ -50,7 +53,11 @@ func TestFindDocsDirectoriesEmptyRepo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	paths, err := findDocsDirectories(tmpDir)
 	assert.NoError(t, err)
@@ -63,7 +70,11 @@ func TestGenerateIndexNoProviders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	config := &Config{
 		TargetDir: tmpDir,
@@ -81,7 +92,11 @@ func TestCloneProviderInvalidURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	provider := Provider{
 		Repo:        "invalid-url",
@@ -98,10 +113,18 @@ func TestUpdateProviderNoChanges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	repoDir, _ := setupMockRepo(t)
-	defer os.RemoveAll(repoDir)
+	defer func() {
+		if err := os.RemoveAll(repoDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	provider := Provider{
 		Repo:        repoDir, // Use the local mock repository
@@ -123,7 +146,11 @@ func TestCleanProvidersEmptyDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	err = cleanProviders(tmpDir)
 	assert.NoError(t, err)
@@ -137,7 +164,11 @@ func TestFindDocsDirectoriesNestedInvalid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	dirs := []string{
 		"deep/nested/docs", // Invalid: too deeply nested
@@ -162,7 +193,11 @@ func TestFindDocsDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	// Create test directory structure
 	dirs := []string{
@@ -193,7 +228,11 @@ func TestGenerateIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	// Create test providers with docs
 	providers := map[string]struct{}{
@@ -245,7 +284,11 @@ func TestCleanProviders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	// Create some test directories
 	testDirs := []string{"aws", "azurerm"}
@@ -308,23 +351,12 @@ func setupMockRepo(t *testing.T) (string, *mockRepo) {
 		t.Fatal(err)
 	}
 
-	// Create a main branch
-	err = worktree.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName("main"),
-		Create: true,
-	})
+	// Debugging: Log the repository state after the initial commit
+	head, err := repo.Head()
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to get repository head: %v", err)
 	}
-
-	// Add a remote reference to origin/main
-	_, err = repo.CreateRemote(&config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{tmpDir}, // Point to itself for testing
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Logf("Repository HEAD after initial commit: %s", head.Hash())
 
 	// Add a docs directory to the mock repository
 	docsDir := filepath.Join(tmpDir, "docs")
@@ -349,6 +381,15 @@ func setupMockRepo(t *testing.T) (string, *mockRepo) {
 		t.Fatal(err)
 	}
 
+	// Create a main branch
+	err = worktree.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName("main"),
+		Create: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	return tmpDir, &mockRepo{Repository: repo, worktree: worktree}
 }
 
@@ -357,34 +398,20 @@ func TestCloneProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
-	repoDir, mockRepo := setupMockRepo(t)
-	defer os.RemoveAll(repoDir)
+	repoDir, _ := setupMockRepo(t)
+	defer func() {
+		if err := os.RemoveAll(repoDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
-	// Add a docs directory to the mock repository
-	docsDir := filepath.Join(repoDir, "docs")
-	if err := os.MkdirAll(docsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(docsDir, "index.md"), []byte("# Docs"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	_, err = mockRepo.worktree.Add("docs/index.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = mockRepo.worktree.Commit("Add docs directory", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Test User",
-			Email: "test@example.com",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	// Simplify the test by removing commit logic and focusing on cloning
 	provider := Provider{
 		Repo:        repoDir, // Use the local mock repository
 		Description: "Test Provider",
@@ -403,10 +430,18 @@ func TestUpdateProvider(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	repoDir, mockRepo := setupMockRepo(t)
-	defer os.RemoveAll(repoDir)
+	defer func() {
+		if err := os.RemoveAll(repoDir); err != nil {
+			t.Fatalf("failed to remove temporary directory: %v", err)
+		}
+	}()
 
 	provider := Provider{
 		Repo:        repoDir, // Use the local mock repository
@@ -435,6 +470,7 @@ func TestUpdateProvider(t *testing.T) {
 			Email: "test@example.com",
 			When:  time.Now(),
 		},
+		All: true, // Ensures all changes are committed, even if empty
 	})
 	if err != nil {
 		t.Fatal(err)
