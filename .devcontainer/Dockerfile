@@ -4,6 +4,7 @@ FROM golang:1.24-bullseye
 RUN apt-get update && apt-get install -y \
     git \
     curl \
+    jq \
     wget \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
