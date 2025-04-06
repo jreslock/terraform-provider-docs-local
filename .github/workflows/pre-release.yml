@@ -20,7 +20,7 @@ on:
 
 jobs:
   pre-release:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' || github.event_name == 'workflow_dispatch'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && contains(fromJSON('["bump:"]'), github.event.pull_request.labels.name) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -50,11 +50,6 @@ jobs:
               exit 0
             fi
           fi
-
-      - name: Debug CURRENT_TAG and NEXT_TAG
-        run: |
-          echo "CURRENT_TAG: $(task get-current-tag | tail -n 1)"
-          echo "NEXT_TAG: $(task get-next-tag VERSION_TYPE=${{ steps.determine_bump.outputs.bump }} | tail -n 1)"
 
       - name: Build devcontainer and generate CHANGELOG.md
         uses: devcontainers/ci@v0.3.1900000417
