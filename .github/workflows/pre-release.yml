@@ -23,17 +23,20 @@ jobs:
         id: check_label
         run: |
           echo "Checking for bump label..."
-          LABELS=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -r '.[].name')
-          echo "Labels: $LABELS"
-          if echo "$LABELS" | grep -q 'bump:major'; then
+          PATCH=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -e '.[].name | test("bump:patch")')
+          MINOR=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -e '.[].name | test("bump:minor")')
+          MAJOR=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -e '.[].name | test("bump:major")')
+          echo "Labels: ${{ toJson(github.event.pull_request.labels) }}"
+          if $MAJOR; then
             echo "bump=major" >> $GITHUB_ENV
-          elif echo "$LABELS" | grep -q 'bump:minor'; then
+          elif $MINOR; then
             echo "bump=minor" >> $GITHUB_ENV
-          elif echo "$LABELS" | grep -q 'bump:patch'; then
+          elif $PATCH; then
             echo "bump=patch" >> $GITHUB_ENV
           else
             echo "No bump label found. Skipping workflow."
             exit 0
+          fi
 
       - name: Build devcontainer and generate CHANGELOG.md
         uses: devcontainers/ci@v0.3.1900000417
