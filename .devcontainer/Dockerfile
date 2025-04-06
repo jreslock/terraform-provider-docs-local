@@ -1,7 +1,7 @@
 FROM golang:1.24-bullseye
 
 # Install basic development tools
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -yqq \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update -yqq && apt-get install -yqq \
     git \
     curl \
     jq \
