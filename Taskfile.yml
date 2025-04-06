@@ -62,8 +62,8 @@ tasks:
       VERSION_TYPE: patch
     deps: [lint, build, test]
     cmds:
-      - CURRENT_TAG=$(svu current)
-      - NEXT_TAG=$(svu {{.VERSION_TYPE}})
+      - CURRENT_TAG=$(sh "svu current")
+      - NEXT_TAG=$(sh "svu {{.VERSION_TYPE}}")
       - echo "Bumping version from $CURRENT_TAG to $NEXT_TAG"
       - task changelog -- NEXT_TAG=$NEXT_TAG
       - git add CHANGELOG.md
