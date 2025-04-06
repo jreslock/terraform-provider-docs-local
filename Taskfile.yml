@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   BINARY_NAME: terraform-provider-docs-local
-  GO_VERSION: '1.22'
+  GO_VERSION: '1.24'
   ARTIFACTS_DIR: artifacts
 
 tasks:
