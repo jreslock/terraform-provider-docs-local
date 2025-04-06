@@ -72,10 +72,12 @@ tasks:
     desc: Bump version (patch, minor, or major)
     vars:
       VERSION_TYPE: patch
+      CURRENT_TAG:
+        sh: task get-current-tag | tail -n 1
+      NEXT_TAG:
+        sh: task get-next-tag VERSION_TYPE={{.VERSION_TYPE}} | tail -n 1
     deps: [lint, build, test]
     cmds:
-      - CURRENT_TAG=$(task get-current-tag)
-      - NEXT_TAG=$(task get-next-tag VERSION_TYPE={{.VERSION_TYPE}})
       - echo "Bumping version from {{.CURRENT_TAG}} to {{.NEXT_TAG}}"
       - task changelog -- NEXT_TAG={{.NEXT_TAG}}
       - git add CHANGELOG.md

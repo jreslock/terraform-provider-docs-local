@@ -51,10 +51,18 @@ jobs:
             fi
           fi
 
+      - name: Debug CURRENT_TAG and NEXT_TAG
+        run: |
+          echo "CURRENT_TAG: $(task get-current-tag | tail -n 1)"
+          echo "NEXT_TAG: $(task get-next-tag VERSION_TYPE=${{ steps.determine_bump.outputs.bump }} | tail -n 1)"
+
       - name: Build devcontainer and generate CHANGELOG.md
         uses: devcontainers/ci@v0.3.1900000417
         with:
           subFolder: ${{ github.workspace }}
           configFile: .devcontainer/CI/devcontainer.json
           runCmd: |
+            CURRENT_TAG=$(task get-current-tag | tail -n 1)
+            NEXT_TAG=$(task get-next-tag VERSION_TYPE=${{ steps.determine_bump.outputs.bump }} | tail -n 1)
+            echo "Bumping version from $CURRENT_TAG to $NEXT_TAG"
             task bump-${{ steps.determine_bump.outputs.bump }}
