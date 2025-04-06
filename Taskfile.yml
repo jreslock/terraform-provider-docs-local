@@ -30,6 +30,11 @@ tasks:
       - GOOS=linux GOARCH=arm64 go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-linux-arm64 main.go
       - GOOS=windows GOARCH=amd64 go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe main.go
 
+  git-safe:
+    desc: Add workspace directory to git safe directories
+    cmds:
+      - git config --global --add safe.directory /workspace
+
   test:
     desc: Run tests
     cmds:
@@ -37,12 +42,12 @@ tasks:
 
   lint:
     desc: Run linters
+    deps: [git-safe]
     cmds:
       # Add the workspace directory to the safe directories list
       # to avoid issues with git in CI/CD environments
       # This is necessary for tools like golangci-lint that use git
       # to check for modified files
-      - git config --global --add safe.directory /workspace
       - go vet {{.GOFLAGS}} ./...
       - golangci-lint run
 
@@ -53,16 +58,19 @@ tasks:
 
   version:
     desc: Show current version
+    deps: [git-safe]
     cmds:
       - svu current
 
   get-current-tag:
     desc: Get the current version tag
+    deps: [git-safe]
     cmds:
       - svu current
 
   get-next-tag:
     desc: Get the next version tag based on VERSION_TYPE
+    deps: [git-safe]
     vars:
       VERSION_TYPE: patch
     cmds:
@@ -79,7 +87,7 @@ tasks:
     deps: [lint, build, test]
     cmds:
       - echo "Bumping version from {{.CURRENT_TAG}} to {{.NEXT_TAG}}"
-      - task changelog -- NEXT_TAG={{.NEXT_TAG}}
+      - task changelog NEXT_TAG={{.NEXT_TAG}}
       - git add CHANGELOG.md
       - git commit -am "Release {{.NEXT_TAG}}"
       - git tag -a {{.NEXT_TAG}} -m "Release {{.NEXT_TAG}}"
@@ -108,10 +116,9 @@ tasks:
 
   changelog:
     desc: Generate changelog
-    vars:
-      NEXT_TAG: ""
+    deps: [git-safe]
     cmds:
-      - git config --global --add safe.directory /workspace
+      - echo "Generating changelog with NEXT_TAG={{.NEXT_TAG}}"
       - git-chglog --next-tag {{.NEXT_TAG}} -o CHANGELOG.md
 
   release:
@@ -128,9 +135,9 @@ tasks:
 
   pre-commit-install:
     desc: Install pre-commit hooks
+    deps: [git-safe]
     cmds:
       - pre-commit clean
-      - git config --global --add safe.directory /workspace
       - pre-commit install
 
   pre-commit-run:
