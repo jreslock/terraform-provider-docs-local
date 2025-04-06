@@ -2,8 +2,7 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       snapshot:
@@ -16,8 +15,6 @@ jobs:
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     permissions:
       contents: write
       packages: write
@@ -29,6 +26,8 @@ jobs:
 
       - name: Build devcontainer and generate release artifacts
         uses: devcontainers/ci@v0.3.1900000417
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           subFolder: ${{ github.workspace }}
           configFile: .devcontainer/CI/devcontainer.json
