@@ -25,13 +25,13 @@ jobs:
           echo "Checking for bump label..."
           LABELS="${{ toJson(github.event.pull_request.labels) }}"
           
-          jq -e '.[] | .name | test("bump:patch")' <<<< $LABELS
+          jq -e '.[] | .name | test("bump:patch")' <<< $LABELS
           PATCH=$?
           
-          jq -e '.[] | .name | test("bump:minor")' <<<< $LABELS
+          jq -e '.[] | .name | test("bump:minor")' <<< $LABELS
           MINOR=$?
 
-          jq -e '.[] | .name | test("bump:major")' <<<< $LABELS
+          jq -e '.[] | .name | test("bump:major")' <<< $LABELS
           MAJOR=$?
           
           echo "Labels: $LABELS"
