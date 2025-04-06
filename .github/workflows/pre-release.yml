@@ -22,7 +22,8 @@ jobs:
   pre-release:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && contains(join(github.event.pull_request.labels.*.name, ','), 'bump:') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
