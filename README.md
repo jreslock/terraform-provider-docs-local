@@ -15,6 +15,8 @@ A tool for managing local copies of Terraform provider documentation. This tool 
 
 This tool expects providers to have a standard repository structure with a top-level `docs` or `website/docs` directory.
 
+## Notes
+
 ## Installation
 
 ### macOS (using Homebrew)
