@@ -7,10 +7,20 @@ on:
     types:
       - closed
   workflow_dispatch:
+    inputs:
+      bump:
+        description: 'Bump type (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
 
 jobs:
   pre-release:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     steps:
@@ -19,31 +29,26 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for bump label
-        id: check_label
+      - name: Determine bump type
+        id: determine_bump
         run: |
-          echo "Checking for bump label..."
-          LABELS="${{ toJson(github.event.pull_request.labels) }}"
-          
-          jq -e '.[] | .name | test("bump:patch")' <<< $LABELS
-          PATCH=$?
-          
-          jq -e '.[] | .name | test("bump:minor")' <<< $LABELS
-          MINOR=$?
-
-          jq -e '.[] | .name | test("bump:major")' <<< $LABELS
-          MAJOR=$?
-          
-          echo "Labels: $LABELS"
-          if [[ $MAJOR -eq 0 ]]; then
-            echo "bump=major" >> $GITHUB_ENV
-          elif [[ $MINOR -eq 0 ]]; then
-            echo "bump=minor" >> $GITHUB_ENV
-          elif [[ $PATCH -eq 0 ]]; then
-            echo "bump=patch" >> $GITHUB_ENV
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "bump=${{ github.event.inputs.bump }}" >> $GITHUB_OUTPUT
           else
-            echo "No bump label found. Skipping workflow."
-            exit 0
+            echo "Checking for bump label..."
+            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[].name')
+
+            echo "Labels: $LABELS"
+            if echo "$LABELS" | grep -q "bump:major"; then
+              echo "bump=major" >> $GITHUB_OUTPUT
+            elif echo "$LABELS" | grep -q "bump:minor"; then
+              echo "bump=minor" >> $GITHUB_OUTPUT
+            elif echo "$LABELS" | grep -q "bump:patch"; then
+              echo "bump=patch" >> $GITHUB_OUTPUT
+            else
+              echo "No bump label found. Skipping workflow."
+              exit 0
+            fi
           fi
 
       - name: Build devcontainer and generate CHANGELOG.md
@@ -52,4 +57,4 @@ jobs:
           subFolder: ${{ github.workspace }}
           configFile: .devcontainer/CI/devcontainer.json
           runCmd: |
-            task bump-${{ env.bump }}
+            task bump-${{ steps.determine_bump.outputs.bump }}
