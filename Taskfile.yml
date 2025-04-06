@@ -56,14 +56,26 @@ tasks:
     cmds:
       - svu current
 
+  get-current-tag:
+    desc: Get the current version tag
+    cmds:
+      - sh -c "svu current"
+
+  get-next-tag:
+    desc: Get the next version tag based on VERSION_TYPE
+    vars:
+      VERSION_TYPE: patch
+    cmds:
+      - sh -c "svu {{.VERSION_TYPE}}"
+
   bump-version:
     desc: Bump version (patch, minor, or major)
     vars:
       VERSION_TYPE: patch
     deps: [lint, build, test]
     cmds:
-      - CURRENT_TAG=$(sh "svu current")
-      - NEXT_TAG=$(sh "svu {{.VERSION_TYPE}}")
+      - CURRENT_TAG=$(task get-current-tag)
+      - NEXT_TAG=$(task get-next-tag VERSION_TYPE={{.VERSION_TYPE}})
       - echo "Bumping version from $CURRENT_TAG to $NEXT_TAG"
       - task changelog -- NEXT_TAG=$NEXT_TAG
       - git add CHANGELOG.md
