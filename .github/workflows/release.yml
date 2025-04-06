@@ -1,8 +1,10 @@
 name: Release
 
 on:
-  push:
-    tags: ['v*']
+  workflow_run:
+    workflows: [ "Pre-Release" ]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       snapshot:
@@ -14,6 +16,7 @@ on:
 jobs:
   release:
     name: Create Release
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
