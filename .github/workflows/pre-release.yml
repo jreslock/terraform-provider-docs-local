@@ -23,15 +23,23 @@ jobs:
         id: check_label
         run: |
           echo "Checking for bump label..."
-          PATCH=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -e '.[].name | test("bump:patch")')
-          MINOR=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -e '.[].name | test("bump:minor")')
-          MAJOR=$(echo "${{ toJson(github.event.pull_request.labels) }}" | jq -e '.[].name | test("bump:major")')
-          echo "Labels: ${{ toJson(github.event.pull_request.labels) }}"
-          if $MAJOR; then
+          LABELS="${{ toJson(github.event.pull_request.labels) }}"
+          
+          echo $LABELS | jq -e '.[].name | test("bump:patch")' > /dev/null
+          PATCH=$?
+          
+          echo $LABELS | jq -e '.[].name | test("bump:minor")' > /dev/null
+          MINOR=$?
+
+          echo $LABELS | jq -e '.[].name | test("bump:major")' > /dev/null
+          MAJOR=$?
+          
+          echo "Labels: $LABELS"
+          if [[ $MAJOR -eq 0 ]]; then
             echo "bump=major" >> $GITHUB_ENV
-          elif $MINOR; then
+          elif [[ $MINOR -eq 0 ]]; then
             echo "bump=minor" >> $GITHUB_ENV
-          elif $PATCH; then
+          elif [[ $PATCH -eq 0 ]]; then
             echo "bump=patch" >> $GITHUB_ENV
           else
             echo "No bump label found. Skipping workflow."
