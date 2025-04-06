@@ -129,13 +129,13 @@ tasks:
     desc: Create a new release
     deps: [lint, test]
     cmds:
-      - goreleaser release --clean
+      - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --clean
 
   release-snapshot:
     desc: Create a snapshot release
     deps: [lint, test]
     cmds:
-      - goreleaser release --snapshot --clean
+      - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --snapshot --clean
 
   pre-commit-install:
     desc: Install pre-commit hooks
