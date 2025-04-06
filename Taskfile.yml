@@ -89,11 +89,12 @@ tasks:
       - echo "Bumping version from {{.CURRENT_TAG}} to {{.NEXT_TAG}}"
       - git config user.name "github-actions[bot]"
       - git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - git checkout -b release-{{.NEXT_TAG}}
       - task changelog NEXT_TAG={{.NEXT_TAG}}
       - git add CHANGELOG.md
       - git commit -am "Release {{.NEXT_TAG}}"
       - git tag -a {{.NEXT_TAG}} -m "Release {{.NEXT_TAG}}"
-      - git push origin main
+      - git push origin release-{{.NEXT_TAG}}
       - git push origin {{.NEXT_TAG}}
 
   bump-patch:
