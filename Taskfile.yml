@@ -59,14 +59,14 @@ tasks:
   get-current-tag:
     desc: Get the current version tag
     cmds:
-      - sh -c "svu current"
+      - svu current
 
   get-next-tag:
     desc: Get the next version tag based on VERSION_TYPE
     vars:
       VERSION_TYPE: patch
     cmds:
-      - sh -c "svu {{.VERSION_TYPE}}"
+      - svu {{.VERSION_TYPE}}
 
   bump-version:
     desc: Bump version (patch, minor, or major)
@@ -76,33 +76,33 @@ tasks:
     cmds:
       - CURRENT_TAG=$(task get-current-tag)
       - NEXT_TAG=$(task get-next-tag VERSION_TYPE={{.VERSION_TYPE}})
-      - echo "Bumping version from $CURRENT_TAG to $NEXT_TAG"
-      - task changelog -- NEXT_TAG=$NEXT_TAG
+      - echo "Bumping version from {{.CURRENT_TAG}} to {{.NEXT_TAG}}"
+      - task changelog -- NEXT_TAG={{.NEXT_TAG}}
       - git add CHANGELOG.md
-      - git commit -am "Release $NEXT_TAG"
-      - git tag -a $NEXT_TAG -m "Release $NEXT_TAG"
-      - git push origin $NEXT_TAG
+      - git commit -am "Release {{.NEXT_TAG}}"
+      - git tag -a {{.NEXT_TAG}} -m "Release {{.NEXT_TAG}}"
+      - git push origin {{.NEXT_TAG}}
 
   bump-patch:
     desc: Bump patch version
     vars:
       VERSION_TYPE: patch
     cmds:
-      - task bump-version
+      - task bump-version VERSION_TYPE={{.VERSION_TYPE}}
 
   bump-minor:
     desc: Bump minor version
     vars:
       VERSION_TYPE: minor
     cmds:
-      - task bump-version
+      - task bump-version VERSION_TYPE={{.VERSION_TYPE}}
 
   bump-major:
     desc: Bump major version
     vars:
       VERSION_TYPE: major
     cmds:
-      - task bump-version
+      - task bump-version VERSION_TYPE={{.VERSION_TYPE}}
 
   changelog:
     desc: Generate changelog
