@@ -29,13 +29,12 @@ jobs:
 
       - name: Build devcontainer and generate release artifacts
         uses: devcontainers/ci@v0.3.1900000417
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           subFolder: ${{ github.workspace }}
           configFile: .devcontainer/CI/devcontainer.json
+          env: |
+            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
           runCmd: |
-            export GITHUB_TOKEN="${GITHUB_TOKEN}"
             task build-all
             if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.snapshot }}" = "true" ]; then
               task release-snapshot
