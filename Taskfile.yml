@@ -1,7 +1,6 @@
 version: '3'
 
 vars:
-  GOFLAGS: "-buildvcs=false"
   BINARY_NAME: terraform-provider-docs-local
   GO_VERSION: '1.24'
   ARTIFACTS_DIR: artifacts
@@ -17,18 +16,18 @@ tasks:
     deps: [clean]
     cmds:
       - mkdir -p {{.ARTIFACTS_DIR}}
-      - go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}} main.go
+      - go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}} main.go
 
   build-all:
     desc: Build for multiple architectures
-    deps: [clean]
+    deps: [clean, git-safe]
     cmds:
       - mkdir -p {{.ARTIFACTS_DIR}}
-      - GOOS=darwin GOARCH=amd64 go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-amd64 main.go
-      - GOOS=darwin GOARCH=arm64 go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-arm64 main.go
-      - GOOS=linux GOARCH=amd64 go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-linux-amd64 main.go
-      - GOOS=linux GOARCH=arm64 go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-linux-arm64 main.go
-      - GOOS=windows GOARCH=amd64 go build {{.GOFLAGS}} -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe main.go
+      - GOOS=darwin GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-amd64 main.go
+      - GOOS=darwin GOARCH=arm64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-arm64 main.go
+      - GOOS=linux GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-linux-amd64 main.go
+      - GOOS=linux GOARCH=arm64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-linux-arm64 main.go
+      - GOOS=windows GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-windows-amd64.exe main.go
 
   git-safe:
     desc: Add workspace directory to git safe directories
@@ -37,6 +36,7 @@ tasks:
 
   test:
     desc: Run tests
+    deps: [git-safe]
     cmds:
       - go test {{.GOFLAGS}} ./...
 
@@ -48,7 +48,7 @@ tasks:
       # to avoid issues with git in CI/CD environments
       # This is necessary for tools like golangci-lint that use git
       # to check for modified files
-      - go vet {{.GOFLAGS}} ./...
+      - go vet ./...
       - golangci-lint run
 
   clean:
@@ -127,13 +127,13 @@ tasks:
 
   release:
     desc: Create a new release
-    deps: [lint, test]
+    deps: [git-safe, lint, test]
     cmds:
       - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --clean
 
   release-snapshot:
     desc: Create a snapshot release
-    deps: [lint, test]
+    deps: [git-safe, lint, test]
     cmds:
       - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --snapshot --clean
 
