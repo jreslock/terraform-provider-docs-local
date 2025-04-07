@@ -35,6 +35,7 @@ jobs:
           subFolder: ${{ github.workspace }}
           configFile: .devcontainer/CI/devcontainer.json
           runCmd: |
+            export GITHUB_TOKEN="${GITHUB_TOKEN}"
             task build-all
             if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.snapshot }}" = "true" ]; then
               task release-snapshot
