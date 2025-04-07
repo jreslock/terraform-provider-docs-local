@@ -2,8 +2,8 @@ name: Pre-Release
 
 on:
   pull_request:
-    branches: [main]
-    types: [closed]
+    branches: [ main ]
+    types: [ closed ]
   workflow_dispatch:
     inputs:
       bump:
