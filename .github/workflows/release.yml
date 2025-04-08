@@ -1,10 +1,9 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: [ "Pre-Release" ]
-    types:
-      - completed
+  pull_request:
+    branches: [ main ]
+    types: [ closed ]
   workflow_dispatch:
     inputs:
       snapshot:
@@ -12,30 +11,70 @@ on:
         required: false
         default: false
         type: boolean
+      bump:
+        description: 'Bump type (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
 
 jobs:
-  release:
-    name: Create Release
-    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
+  pre-release:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && contains(join(github.event.pull_request.labels.*.name, ','), 'bump:') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
     steps:
-      - name: Checkout tag
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.ref }}
 
-      - name: Build devcontainer and generate release artifacts
+      - name: Determine bump type
+        id: determine_bump
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "bump=${{ github.event.inputs.bump }}" >> $GITHUB_OUTPUT
+          else
+            echo "Checking for bump label..."
+            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[].name')
+
+            echo "Labels: $LABELS"
+            if echo "$LABELS" | grep -q "bump:major"; then
+              echo "bump=major" >> $GITHUB_OUTPUT
+            elif echo "$LABELS" | grep -q "bump:minor"; then
+              echo "bump=minor" >> $GITHUB_OUTPUT
+            elif echo "$LABELS" | grep -q "bump:patch"; then
+              echo "bump=patch" >> $GITHUB_OUTPUT
+            else
+              echo "No bump label found. Skipping workflow."
+              exit 0
+            fi
+          fi
+
+      - name: Get Release Automator App Token
+        id: get-token
+        uses: tibdex/github-app-token@v2.1.0
+        with:
+          app_id: ${{ secrets.RELEASE_AUTOMATOR_GH_APP_ID }}
+          private_key: ${{ secrets.RELEASE_AUTOMATOR_GH_APP_PRIVATE_KEY }}
+
+      - name: Build devcontainer and generate CHANGELOG.md
         uses: devcontainers/ci@v0.3.1900000417
         with:
           subFolder: ${{ github.workspace }}
           configFile: .devcontainer/CI/devcontainer.json
           env: |
-            GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}
+            GITHUB_TOKEN=${{ steps.get-token.outputs.token }}
           runCmd: |
+            task git-safe
+            CURRENT_TAG=$(task get-current-tag | tail -n 1)
+            NEXT_TAG=$(task get-next-tag VERSION_TYPE=${{ steps.determine_bump.outputs.bump }} | tail -n 1)
+            echo "Bumping version from $CURRENT_TAG to $NEXT_TAG"
+            task bump-${{ steps.determine_bump.outputs.bump }}
             task build-all
             if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.snapshot }}" = "true" ]; then
               task release-snapshot
