@@ -20,7 +20,7 @@ tasks:
 
   build-all:
     desc: Build for multiple architectures
-    deps: [clean, git-safe]
+    deps: [clean]
     cmds:
       - mkdir -p {{.ARTIFACTS_DIR}}
       - GOOS=darwin GOARCH=amd64 go build -o {{.ARTIFACTS_DIR}}/{{.BINARY_NAME}}-darwin-amd64 main.go
@@ -36,13 +36,11 @@ tasks:
 
   test:
     desc: Run tests
-    deps: [git-safe]
     cmds:
-      - go test {{.GOFLAGS}} ./...
+      - go test ./...
 
   lint:
     desc: Run linters
-    deps: [git-safe]
     cmds:
       # Add the workspace directory to the safe directories list
       # to avoid issues with git in CI/CD environments
@@ -58,19 +56,16 @@ tasks:
 
   version:
     desc: Show current version
-    deps: [git-safe]
     cmds:
       - svu current
 
   get-current-tag:
     desc: Get the current version tag
-    deps: [git-safe]
     cmds:
       - svu current
 
   get-next-tag:
     desc: Get the next version tag based on VERSION_TYPE
-    deps: [git-safe]
     vars:
       VERSION_TYPE: patch
     cmds:
@@ -87,14 +82,14 @@ tasks:
     deps: [lint, build, test]
     cmds:
       - echo "Bumping version from {{.CURRENT_TAG}} to {{.NEXT_TAG}}"
-      - git config user.name "github-actions[bot]"
-      - git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-      - git checkout -b release-{{.NEXT_TAG}}
+      - git config user.name "release-automator[app]"
+      - git config user.email "release-automator[app]@users.noreply.github.com"
+      - git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/jreslock/terraform-provider-docs-local.git
       - task changelog NEXT_TAG={{.NEXT_TAG}}
       - git add CHANGELOG.md
       - git commit -am "Release {{.NEXT_TAG}}"
       - git tag -a {{.NEXT_TAG}} -m "Release {{.NEXT_TAG}}"
-      - git push origin release-{{.NEXT_TAG}}
+      - git push origin main
       - git push origin {{.NEXT_TAG}}
 
   bump-patch:
@@ -120,20 +115,19 @@ tasks:
 
   changelog:
     desc: Generate changelog
-    deps: [git-safe]
     cmds:
       - echo "Generating changelog with NEXT_TAG={{.NEXT_TAG}}"
       - git-chglog --next-tag {{.NEXT_TAG}} -o CHANGELOG.md
 
   release:
     desc: Create a new release
-    deps: [git-safe, lint, test]
+    deps: [lint, test]
     cmds:
       - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --clean
 
   release-snapshot:
     desc: Create a snapshot release
-    deps: [git-safe, lint, test]
+    deps: [lint, test]
     cmds:
       - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --snapshot --clean
 
