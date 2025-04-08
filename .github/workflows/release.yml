@@ -22,7 +22,7 @@ on:
           - patch
 
 jobs:
-  pre-release:
+  release:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && contains(join(github.event.pull_request.labels.*.name, ','), 'bump:') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -53,7 +53,6 @@ jobs:
               echo "No bump label found. Skipping workflow."
               exit 0
             fi
-          fi
 
       - name: Get Release Automator App Token
         id: get-token
@@ -62,7 +61,8 @@ jobs:
           app_id: ${{ secrets.RELEASE_AUTOMATOR_GH_APP_ID }}
           private_key: ${{ secrets.RELEASE_AUTOMATOR_GH_APP_PRIVATE_KEY }}
 
-      - name: Build devcontainer and generate CHANGELOG.md
+      - name: Generate CHANGELOG.md, bump version, and create release
+        id: release
         uses: devcontainers/ci@v0.3.1900000417
         with:
           subFolder: ${{ github.workspace }}
@@ -82,7 +82,8 @@ jobs:
               task release
             fi
 
-      - name: Upload Release Artifacts
+      - name: Publish Release Artifacts
+        id: publish-artifacts
         uses: actions/upload-artifact@v4
         with:
           name: release-artifacts
