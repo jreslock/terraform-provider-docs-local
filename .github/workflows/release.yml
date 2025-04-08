@@ -53,6 +53,7 @@ jobs:
               echo "No bump label found. Skipping workflow."
               exit 0
             fi
+          fi
 
       - name: Get Release Automator App Token
         id: get-token
