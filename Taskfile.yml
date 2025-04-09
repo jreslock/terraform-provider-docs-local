@@ -73,6 +73,8 @@ tasks:
 
   bump-version:
     desc: Bump version (patch, minor, or major)
+    env:
+      GITHUB_TOKEN: '{{.GITHUB_TOKEN}}'
     vars:
       VERSION_TYPE: patch
       CURRENT_TAG:
@@ -130,14 +132,18 @@ tasks:
   release:
     desc: Create a new release
     deps: [lint, test]
+    env:
+      GITHUB_TOKEN: '{{.GITHUB_TOKEN}}'
     cmds:
-      - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --clean
+      - goreleaser release --clean
 
   release-snapshot:
     desc: Create a snapshot release
     deps: [lint, test]
+    env:
+      GITHUB_TOKEN: '{{.GITHUB_TOKEN}}'
     cmds:
-      - GITHUB_TOKEN=${GITHUB_TOKEN} goreleaser release --snapshot --clean
+      - goreleaser release --snapshot --clean
 
   pre-commit-install:
     desc: Install pre-commit hooks
