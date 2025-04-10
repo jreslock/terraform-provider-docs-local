@@ -49,13 +49,9 @@ release:
   draft: true
   prerelease: auto
   mode: replace
-  header: |
-    ## Changelog
-    {{- if .Changelog }}
-    {{ .Changelog }}
-    {{- else }}
-    No changelog available for this release.
-    {{- end }}
+  header:
+    from_file:
+      path: ./CHANGELOG.md
 
 brews:
   - name: terraform-provider-docs-local
