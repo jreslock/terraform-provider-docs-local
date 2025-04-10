@@ -27,7 +27,6 @@
             }
         }
     },
-    "postCreateCommand": "echo 'Post-Create Done'",
     "remoteUser": "root",
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
     "workspaceFolder": "/workspace"
