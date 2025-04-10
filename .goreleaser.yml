@@ -46,12 +46,16 @@ release:
   github:
     owner: jreslock
     name: terraform-provider-docs-local
-  draft: false
+  draft: true
   prerelease: auto
   mode: replace
   header: |
     ## Changelog
+    {{- if .Changelog }}
     {{ .Changelog }}
+    {{- else }}
+    No changelog available for this release.
+    {{- end }}
 
 brews:
   - name: terraform-provider-docs-local
