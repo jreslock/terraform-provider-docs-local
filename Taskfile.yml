@@ -87,8 +87,9 @@ tasks:
       - git config user.name "release-automator[bot]"
       - git config user.email "1208257+release-automator[bot]@users.noreply.github.com"
       - git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/jreslock/terraform-provider-docs-local.git
+      - git config 'http.https://github.com/.extraheader=AUTHORIZATION:'
       - echo "Git configuration:"
-      - git config --list
+      - git config --list --show-origin
       - echo "Git remote URL:"
       - git remote -v
       - task changelog NEXT_TAG={{.NEXT_TAG}}
