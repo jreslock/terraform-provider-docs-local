@@ -106,4 +106,4 @@ brews:
     test: |
       system "#{bin}/terraform-provider-docs-local --version"
     install: |
-      bin.install "terraform-provider-docs-local-darwin-#{Hardware::CPU.arch}" => "terraform-provider-docs-local"
+      bin.install "terraform-provider-docs-local"
