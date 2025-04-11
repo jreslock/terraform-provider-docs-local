@@ -1,4 +1,8 @@
 
+<a name="v0.0.18"></a>
+## [v0.0.18](https://github.com/jreslock/terraform-provider-docs-local/compare/v0.0.17...v0.0.18) (2025-04-11)
+
+
 <a name="v0.0.17"></a>
 ## [v0.0.17](https://github.com/jreslock/terraform-provider-docs-local/compare/v0.0.16...v0.0.17) (2025-04-11)
 
