@@ -35,6 +35,46 @@ archives:
       - goos: windows
         formats: zip
 
+changelog:
+  sort: asc
+  use: github
+  format: "{{ .SHA }}: {{ .Message }}{{ with .AuthorUsername }} (@{{ . }}){{ end }}"
+  filters:
+    exclude:
+      - "^test:"
+      - "^test\\("
+      - "^chore: update$"
+      - "^chore: docs$"
+      - "^docs: update$"
+      - "^chore: schema$"
+      - "^chore: typo$"
+      - "^chore: auto-update generated files$"
+      - "^chore: update schema$"
+      - "^chore: schema update$"
+      - "^chore\\(deps\\): "
+      - "^(build|ci): "
+      - "merge conflict"
+      - "merge conflict"
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+      - go mod tidy
+  groups:
+    - title: "New Features"
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 100
+    - title: "Security updates"
+      regexp: '^.*?sec(\(.+\))??!?:.+$'
+      order: 150
+    - title: "Bug fixes"
+      regexp: '^.*?(fix|refactor)(\(.+\))??!?:.+$'
+      order: 200
+    - title: "Documentation updates"
+      regexp: ^.*?docs?(\(.+\))??!?:.+$
+      order: 400
+    - title: Other work
+      order: 9999
+
 checksum:
   name_template: 'checksums.txt'
   algorithm: sha256
@@ -49,9 +89,10 @@ release:
   draft: true
   prerelease: auto
   mode: replace
-  header:
-    from_file:
-      path: ./CHANGELOG.md
+  name_template: >-
+    {{ if eq .Version "latest" }}{{ .TagName }}{{ else }}v{{ .Version }}{{ end }}
+  footer: |
+    **Full Changelog**: https://github.com/jreslock/terraform-provider-docs-local/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 brews:
   - name: terraform-provider-docs-local
