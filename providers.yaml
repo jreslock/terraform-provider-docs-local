@@ -1,6 +1,7 @@
 # This file is used to configure the Terraform provider documentation
 # It specifies the target directory for cloned provider repositories
-# and the list of providers and their respective repository names
+# and the list of providers and their respective repository names,
+# optionally desired branch to clone, and a description.
 target_dir: /Users/jreslock/docs/terraform-providers
 providers:
   aws:
@@ -9,6 +10,9 @@ providers:
   awscc:
     repo: "hashicorp/terraform-provider-awscc"
     description: AWS Cloud Control
+  azure:
+    repo: "hashicorp/terraform-provider-azurerm"
+    description: Azure
   databricks:
     repo: "databricks/terraform-provider-databricks"
     description: Databricks
@@ -27,10 +31,10 @@ providers:
   snowflake:
     repo: "snowflakedb/terraform-provider-snowflake"
     description: Snowflake
-  # SumoLogic is not supported yet due to their use of `master1` vs. `main`
-  # sumologic:
-  #   repo: "sumologic/terraform-provider-sumologic"
-  #   description: SumoLogic provider for Terraform
+  sumologic:
+    repo: "sumologic/terraform-provider-sumologic"
+    description: SumoLogic
+    # branch: "master"
   tls:
     repo: "hashicorp/terraform-provider-tls"
     description: TLS
