@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -75,7 +76,8 @@ func loadConfig(filename string) (*Config, error) {
 	return &config, nil
 }
 
-func cloneProvider(providerName string, provider Provider, targetDir string) error {
+// Updated cloneProvider to detect the default branch dynamically or use a user-specified branch
+func cloneProvider(providerName string, provider Provider, targetDir string, branch string) error {
 	fmt.Printf("Processing %s (%s)...\n", providerName, provider.Repo)
 
 	// Create provider directory
@@ -89,12 +91,44 @@ func cloneProvider(providerName string, provider Provider, targetDir string) err
 		repoURL = fmt.Sprintf("https://github.com/%s.git", provider.Repo)
 	}
 
+	// Detect the default branch if not specified
+	if branch == "" {
+		repo, err := git.Init(memory.NewStorage(), nil)
+		if err != nil {
+			return fmt.Errorf("error initializing in-memory repository: %v", err)
+		}
+
+		remote, err := repo.CreateRemote(&config.RemoteConfig{
+			Name: "origin",
+			URLs: []string{repoURL},
+		})
+		if err != nil {
+			return fmt.Errorf("error creating remote: %v", err)
+		}
+
+		refs, err := remote.List(&git.ListOptions{})
+		if err != nil {
+			return fmt.Errorf("error listing remote references: %v", err)
+		}
+
+		for _, ref := range refs {
+			if ref.Name().IsBranch() {
+				branch = ref.Name().Short()
+				break
+			}
+		}
+
+		if branch == "" {
+			branch = "main" // Fallback to "main" if no branch is detected
+		}
+	}
+
 	// Clone the repository
 	_, err := git.PlainClone(providerDir, false, &git.CloneOptions{
 		URL:           repoURL,
 		Depth:         1,
 		SingleBranch:  true,
-		ReferenceName: plumbing.NewBranchReferenceName("main"),
+		ReferenceName: plumbing.NewBranchReferenceName(branch),
 	})
 	if err != nil {
 		return fmt.Errorf("error cloning repository: %v", err)
@@ -111,86 +145,6 @@ func cloneProvider(providerName string, provider Provider, targetDir string) err
 	}
 
 	fmt.Printf("Successfully cloned %s\n", providerName)
-	return nil
-}
-
-func updateProvider(providerName string, targetDir string) error {
-	providerDir := filepath.Join(targetDir, providerName)
-	if _, err := os.Stat(providerDir); os.IsNotExist(err) {
-		return fmt.Errorf("provider '%s' has not been cloned yet", providerName)
-	}
-
-	fmt.Printf("Updating docs for %s...\n", providerName)
-
-	// Open the repository
-	repo, err := git.PlainOpen(providerDir)
-	if err != nil {
-		return fmt.Errorf("error opening repository: %v", err)
-	}
-
-	// Get the worktree
-	worktree, err := repo.Worktree()
-	if err != nil {
-		return fmt.Errorf("error getting worktree: %v", err)
-	}
-
-	// Fetch latest changes
-	err = repo.Fetch(&git.FetchOptions{
-		RemoteName: "origin",
-		RefSpecs:   []config.RefSpec{"+refs/heads/main:refs/remotes/origin/main"},
-		Depth:      1,
-		Force:      true,
-	})
-	if err != nil && err != git.NoErrAlreadyUpToDate {
-		return fmt.Errorf("error fetching changes: %v", err)
-	}
-
-	// Get the reference to origin/main
-	ref, err := repo.Reference(plumbing.NewRemoteReferenceName("origin", "main"), true)
-	if err != nil {
-		return fmt.Errorf("error getting remote reference: %v", err)
-	}
-
-	// Reset to match remote
-	err = worktree.Reset(&git.ResetOptions{
-		Commit: ref.Hash(),
-		Mode:   git.HardReset,
-	})
-	if err != nil {
-		return fmt.Errorf("error resetting to remote: %v", err)
-	}
-
-	// Find docs directories again to ensure we have the right ones
-	docsPaths, err := findDocsDirectories(providerDir)
-	if err != nil {
-		return fmt.Errorf("error finding docs directories: %v", err)
-	}
-
-	// Clean up any files not in docs directories
-	files, err := os.ReadDir(providerDir)
-	if err != nil {
-		return fmt.Errorf("error reading directory: %v", err)
-	}
-
-	for _, file := range files {
-		if file.Name() != ".git" {
-			isDocsDir := false
-			for _, docsPath := range docsPaths {
-				if strings.HasPrefix(file.Name(), strings.Split(docsPath, "/")[0]) {
-					isDocsDir = true
-					break
-				}
-			}
-			if !isDocsDir {
-				path := filepath.Join(providerDir, file.Name())
-				if err := os.RemoveAll(path); err != nil {
-					return fmt.Errorf("error removing file %s: %v", path, err)
-				}
-			}
-		}
-	}
-
-	fmt.Printf("Successfully updated docs for %s\n", providerName)
 	return nil
 }
 
@@ -266,6 +220,7 @@ func cleanProviders(targetDir string) error {
 func main() {
 	var configFile string
 	var providerName string
+	var branch string
 
 	rootCmd := &cobra.Command{
 		Use:   "terraform-provider-docs-local",
@@ -290,7 +245,7 @@ func main() {
 				log.Fatalf("Error: Provider '%s' not found in configuration", providerName)
 			}
 
-			if err := cloneProvider(providerName, provider, config.TargetDir); err != nil {
+			if err := cloneProvider(providerName, provider, config.TargetDir, branch); err != nil {
 				log.Fatalf("Error: %v", err)
 			}
 
@@ -301,7 +256,8 @@ func main() {
 	}
 
 	cloneOneCmd.Flags().StringVarP(&providerName, "provider", "p", "", "Provider name for clone-one command")
-	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "providers.yaml", "Path to providers configuration file")
+	cloneOneCmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch to clone (default: detect from remote)")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "providers.yaml", "Path to configuration file")
 
 	rootCmd.AddCommand(cloneOneCmd)
 

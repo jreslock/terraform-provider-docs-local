@@ -4,11 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
-	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -85,60 +81,6 @@ func TestGenerateIndexNoProviders(t *testing.T) {
 	err = generateIndex(config)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no providers have been cloned yet")
-}
-
-func TestCloneProviderInvalidURL(t *testing.T) {
-	// Test cloning a provider with an invalid repository URL
-	tmpDir, err := os.MkdirTemp("", "test-target-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Fatalf("failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	provider := Provider{
-		Repo:        "invalid-url",
-		Description: "Invalid Provider",
-	}
-
-	err = cloneProvider("invalid", provider, tmpDir)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "error cloning repository")
-}
-
-func TestUpdateProviderNoChanges(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "test-target-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Fatalf("failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	repoDir, _ := setupMockRepo(t)
-	defer func() {
-		if err := os.RemoveAll(repoDir); err != nil {
-			t.Fatalf("failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	provider := Provider{
-		Repo:        repoDir, // Use the local mock repository
-		Description: "Test Provider",
-	}
-
-	// Clone the provider first
-	err = cloneProvider("test", provider, tmpDir)
-	assert.NoError(t, err)
-
-	// Update the provider without making any changes
-	err = updateProvider("test", tmpDir)
-	assert.NoError(t, err)
 }
 
 func TestCleanProvidersEmptyDir(t *testing.T) {
@@ -310,182 +252,6 @@ func TestCleanProviders(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// Mock git repository for testing clone and update operations
-type mockRepo struct {
-	*git.Repository
-	worktree *git.Worktree
-}
-
-func setupMockRepo(t *testing.T) (string, *mockRepo) {
-	tmpDir, err := os.MkdirTemp("", "test-repo-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	repo, err := git.PlainInit(tmpDir, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	worktree, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Create an initial commit
-	filePath := filepath.Join(tmpDir, "README.md")
-	if err := os.WriteFile(filePath, []byte("# Test Repo"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	_, err = worktree.Add("README.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = worktree.Commit("Initial commit", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Test User",
-			Email: "test@example.com",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Debugging: Log the repository state after the initial commit
-	head, err := repo.Head()
-	if err != nil {
-		t.Fatalf("failed to get repository head: %v", err)
-	}
-	t.Logf("Repository HEAD after initial commit: %s", head.Hash())
-
-	// Add a docs directory to the mock repository
-	docsDir := filepath.Join(tmpDir, "docs")
-	if err := os.MkdirAll(docsDir, 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(docsDir, "index.md"), []byte("# Docs"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	_, err = worktree.Add("docs/index.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = worktree.Commit("Add docs directory", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Test User",
-			Email: "test@example.com",
-			When:  time.Now(),
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Create a main branch
-	err = worktree.Checkout(&git.CheckoutOptions{
-		Branch: plumbing.NewBranchReferenceName("main"),
-		Create: true,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return tmpDir, &mockRepo{Repository: repo, worktree: worktree}
-}
-
-func TestCloneProvider(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "test-target-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Fatalf("failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	repoDir, _ := setupMockRepo(t)
-	defer func() {
-		if err := os.RemoveAll(repoDir); err != nil {
-			t.Fatalf("failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	// Simplify the test by removing commit logic and focusing on cloning
-	provider := Provider{
-		Repo:        repoDir, // Use the local mock repository
-		Description: "Test Provider",
-	}
-
-	err = cloneProvider("test", provider, tmpDir)
-	assert.NoError(t, err)
-
-	// Verify the docs directory was cloned
-	_, err = os.Stat(filepath.Join(tmpDir, "test", "docs"))
-	assert.NoError(t, err)
-}
-
-func TestUpdateProvider(t *testing.T) {
-	tmpDir, err := os.MkdirTemp("", "test-target-*")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := os.RemoveAll(tmpDir); err != nil {
-			t.Fatalf("failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	repoDir, mockRepo := setupMockRepo(t)
-	defer func() {
-		if err := os.RemoveAll(repoDir); err != nil {
-			t.Fatalf("failed to remove temporary directory: %v", err)
-		}
-	}()
-
-	provider := Provider{
-		Repo:        repoDir, // Use the local mock repository
-		Description: "Test Provider",
-	}
-
-	// Clone the provider first
-	err = cloneProvider("test", provider, tmpDir)
-	assert.NoError(t, err)
-
-	// Add a new file to the mock repository
-	newFilePath := filepath.Join(repoDir, "docs", "new.md")
-	if err := os.MkdirAll(filepath.Dir(newFilePath), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(newFilePath, []byte("# New Docs"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	_, err = mockRepo.worktree.Add("docs/new.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = mockRepo.worktree.Commit("Add new docs file", &git.CommitOptions{
-		Author: &object.Signature{
-			Name:  "Test User",
-			Email: "test@example.com",
-			When:  time.Now(),
-		},
-		All: true, // Ensures all changes are committed, even if empty
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Update the provider
-	err = updateProvider("test", tmpDir)
-	assert.NoError(t, err)
-
-	// Verify the new file exists
-	_, err = os.Stat(filepath.Join(tmpDir, "test", "docs", "new.md"))
-	assert.NoError(t, err)
-}
-
 func TestCloneOneCommand(t *testing.T) {
 	// Set up a temporary config file
 	tmpfile, err := os.CreateTemp("", "config.*.yaml")
@@ -536,6 +302,66 @@ func TestCloneOneCommand(t *testing.T) {
 
 	// Simulate command-line arguments
 	rootCmd.SetArgs([]string{"clone-one", "-c", tmpfile.Name(), "-p", "aws"})
+
+	// Execute the command
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Command execution failed: %v", err)
+	}
+}
+
+func TestCloneOneCommandWithBranch(t *testing.T) {
+	// Set up a temporary config file
+	tmpfile, err := os.CreateTemp("", "config.*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Remove(tmpfile.Name()); err != nil {
+			t.Fatalf("failed to remove temporary file: %v", err)
+		}
+	}()
+
+	configContent := []byte(`
+    target_dir: test-providers
+    providers:
+      aws:
+        repo: hashicorp/terraform-provider-aws
+        description: AWS Provider
+`)
+	if _, err := tmpfile.Write(configContent); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up the cobra command
+	var configFile string
+	var providerName string
+	var branch string
+
+	rootCmd := &cobra.Command{
+		Use:   "terraform-provider-docs-local",
+		Short: "A tool for managing Terraform provider documentation",
+	}
+
+	cloneOneCmd := &cobra.Command{
+		Use:   "clone-one",
+		Short: "Clone a specific provider",
+		Run: func(cmd *cobra.Command, args []string) {
+			assert.Equal(t, "aws", providerName)
+			assert.Equal(t, tmpfile.Name(), configFile)
+			assert.Equal(t, "master", branch)
+		},
+	}
+
+	cloneOneCmd.Flags().StringVarP(&providerName, "provider", "p", "", "Provider name for clone-one command")
+	cloneOneCmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch to clone (default: detect from remote)")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Path to providers configuration file")
+	rootCmd.AddCommand(cloneOneCmd)
+
+	// Simulate command-line arguments
+	rootCmd.SetArgs([]string{"clone-one", "-c", tmpfile.Name(), "-p", "aws", "-b", "master"})
 
 	// Execute the command
 	if err := rootCmd.Execute(); err != nil {

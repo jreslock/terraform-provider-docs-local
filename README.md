@@ -41,16 +41,15 @@ go build
 
 ### Configuration
 
-Create a `providers.yaml` file with your desired providers. You can name the file anything you would like but the utility looks for a `providers.yaml` by default if you prefer less typing.
-
-Currently the tool requires that the source repositories all have a `main` branch. This is a bug/design flaw and will be addressed soon. Repositories with `master` instead of `main` do not clone properly and throw an error. Again, this is known and will be addressed in an upcoming release.
+Create a `providers.yaml` file with your desired providers. You can name the file anything you would like but the utility looks for a `providers.yaml` by default if you prefer less typing. You can optionally specify the desired branch to clone. The default behavior if no branch is specified will auto-detect the HEAD branch from the remote repository.
 
 ```yaml
-target_dir: terraform-providers  # Optional, defaults to "terraform-providers"
+target_dir: terraform-providers  # Optional, defaults to "./terraform-providers"
 providers:
   aws:
     repo: hashicorp/terraform-provider-aws
     description: AWS provider for Terraform
+    branch: main # Optional, if not set we auto-detect the HEAD branch from the remote
   azurerm:
     repo: hashicorp/terraform-provider-azurerm
     description: Azure provider for Terraform
@@ -64,6 +63,9 @@ terraform-provider-docs-local clone-all
 
 # Clone a specific provider
 terraform-provider-docs-local clone-one -p aws
+
+# Clone a specific provider at a desired branch
+terraform-provider-docs-local clone-one -p sumologic -b master
 
 # List available providers
 terraform-provider-docs-local list
