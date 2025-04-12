@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
@@ -263,111 +264,48 @@ func cleanProviders(targetDir string) error {
 }
 
 func main() {
-	configFile := flag.String("config", "providers.yaml", "Path to providers configuration file")
-	flag.Parse()
+	var configFile string
+	var providerName string
 
-	args := flag.Args()
-	if len(args) == 0 {
-		fmt.Println("Usage: terraform-provider-docs-local [command] [options]")
-		fmt.Println("Commands:")
-		fmt.Println("  clone-all    Clone all providers and set up sparse checkout")
-		fmt.Println("  clone-one    Clone a specific provider")
-		fmt.Println("  list         List all available providers")
-		fmt.Println("  clean        Remove all cloned providers")
-		fmt.Println("  update-all   Update docs for all providers")
-		fmt.Println("  update-one   Update docs for a specific provider")
-		fmt.Println("  index        Generate index.md file")
-		fmt.Println("\nOptions:")
-		fmt.Println("  -config <file>  Path to providers configuration file")
-		fmt.Println("  -p <name>       Provider name for clone-one/update-one commands")
-		return
+	rootCmd := &cobra.Command{
+		Use:   "terraform-provider-docs-local",
+		Short: "A tool for managing Terraform provider documentation",
 	}
 
-	config, err := loadConfig(*configFile)
-	if err != nil {
-		fmt.Printf("Error loading config: %v\n", err)
-		os.Exit(1)
+	cloneOneCmd := &cobra.Command{
+		Use:   "clone-one",
+		Short: "Clone a specific provider",
+		Run: func(cmd *cobra.Command, args []string) {
+			if providerName == "" {
+				log.Fatal("Error: Provider name is required for clone-one command")
+			}
+
+			config, err := loadConfig(configFile)
+			if err != nil {
+				log.Fatalf("Error loading config: %v", err)
+			}
+
+			provider, exists := config.Providers[providerName]
+			if !exists {
+				log.Fatalf("Error: Provider '%s' not found in configuration", providerName)
+			}
+
+			if err := cloneProvider(providerName, provider, config.TargetDir); err != nil {
+				log.Fatalf("Error: %v", err)
+			}
+
+			if err := generateIndex(config); err != nil {
+				log.Fatalf("Error generating index: %v", err)
+			}
+		},
 	}
 
-	command := args[0]
-	switch command {
-	case "clone-all":
-		for name, provider := range config.Providers {
-			if err := cloneProvider(name, provider, config.TargetDir); err != nil {
-				fmt.Printf("Error cloning %s: %v\n", name, err)
-			}
-		}
-		fmt.Println("All providers have been processed!")
-		if err := generateIndex(config); err != nil {
-			fmt.Printf("Error generating index: %v\n", err)
-		}
+	cloneOneCmd.Flags().StringVarP(&providerName, "provider", "p", "", "Provider name for clone-one command")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "providers.yaml", "Path to providers configuration file")
 
-	case "clone-one":
-		providerName := flag.String("p", "", "Provider name")
-		flag.Parse()
-		if *providerName == "" {
-			fmt.Println("Error: Provider name is required for clone-one command")
-			os.Exit(1)
-		}
-		provider, exists := config.Providers[*providerName]
-		if !exists {
-			fmt.Printf("Error: Provider '%s' not found in configuration\n", *providerName)
-			os.Exit(1)
-		}
-		if err := cloneProvider(*providerName, provider, config.TargetDir); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		if err := generateIndex(config); err != nil {
-			fmt.Printf("Error generating index: %v\n", err)
-		}
+	rootCmd.AddCommand(cloneOneCmd)
 
-	case "list":
-		fmt.Println("Available Terraform providers:")
-		for name, provider := range config.Providers {
-			fmt.Printf("  - %s (%s)\n", name, provider.Repo)
-		}
-
-	case "clean":
-		if err := cleanProviders(config.TargetDir); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-
-	case "update-all":
-		for name := range config.Providers {
-			if err := updateProvider(name, config.TargetDir); err != nil {
-				fmt.Printf("Error updating %s: %v\n", name, err)
-			}
-		}
-		fmt.Println("All provider docs have been updated!")
-		if err := generateIndex(config); err != nil {
-			fmt.Printf("Error generating index: %v\n", err)
-		}
-
-	case "update-one":
-		providerName := flag.String("p", "", "Provider name")
-		flag.Parse()
-		if *providerName == "" {
-			fmt.Println("Error: Provider name is required for update-one command")
-			os.Exit(1)
-		}
-		if err := updateProvider(*providerName, config.TargetDir); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-		if err := generateIndex(config); err != nil {
-			fmt.Printf("Error generating index: %v\n", err)
-		}
-
-	case "index":
-		if err := generateIndex(config); err != nil {
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
-		}
-
-	default:
-		fmt.Printf("Error: Unknown command '%s'\n", command)
-		os.Exit(1)
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatalf("Error: %v", err)
 	}
 }
