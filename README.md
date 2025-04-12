@@ -2,6 +2,8 @@
 
 A tool for managing local copies of Terraform provider documentation. This tool helps you maintain local copies of Terraform provider documentation for offline access and browsing.
 
+Shout out to and inspiration from @pbnj for creating [terradoc](https://github.com/pbnj/terradoc) which is where I got the idea for this project originally.
+
 ## Features
 
 - Clone and maintain local copies of Terraform provider documentation
@@ -15,20 +17,17 @@ A tool for managing local copies of Terraform provider documentation. This tool 
 
 This tool expects providers to have a standard repository structure with a top-level `docs` or `website/docs` directory.
 
-## Notes For Later
-
 ## Installation
 
 ### macOS (using Homebrew)
 
 ```bash
-brew tap jreslock/tap
-brew install terraform-provider-docs-local
+brew install jreslock/tap/terraform-provider-docs-local
 ```
 
 ### Manual Installation
 
-Download the latest release for your platform from the [releases page](https://github.com/jreslock/terraform-provider-docs-local/releases).
+Download the latest release for your platform from the [releases page](https://github.com/jreslock/terraform-provider-docs-local/releases) and put the binary in `/usr/local/bin` or somewhere on your $PATH, make sure it is exectutable (`chmod +x`).
 
 ### Building from Source
 
@@ -42,7 +41,9 @@ go build
 
 ### Configuration
 
-Create a `providers.yaml` file with your desired providers:
+Create a `providers.yaml` file with your desired providers. You can name the file anything you would like but the utility looks for a `providers.yaml` by default if you prefer less typing.
+
+Currently the tool requires that the source repositories all have a `main` branch. This is a bug/design flaw and will be addressed soon. Repositories with `master` instead of `main` do not clone properly and throw an error. Again, this is known and will be addressed in an upcoming release.
 
 ```yaml
 target_dir: terraform-providers  # Optional, defaults to "terraform-providers"
@@ -82,14 +83,14 @@ terraform-provider-docs-local clean
 
 ### Viewing Documentation
 
-After cloning the providers, you can view the documentation using `glow`:
+After cloning the providers, you can view the documentation using `glow` from within the directory you specified in your `providers.yaml` (or whatever you set `target_dir` to be):
 
 ```bash
 # Install glow if you haven't already
 brew install glow
 
 # View the index
-glow index.md
+glow .
 
 # Or navigate directly to a provider's documentation
 glow terraform-providers/aws/docs/index.md
@@ -144,26 +145,14 @@ task test
 
 # Run linters
 task lint
-
-# Create a new release
-task release
-
-# Create a snapshot release
-task release-snapshot
 ```
 
 ### Setting up Pre-commit Hooks
 
-1. Install pre-commit:
+Set up the development environment (this will install hooks and run initial checks):
 
     ```bash
-    brew install pre-commit
-    ```
-
-2. Set up the development environment (this will install hooks and run initial checks):
-
-    ```bash
-    task setup-dev
+    task pre-commit-install
     ```
 
 Additional pre-commit tasks:
@@ -174,9 +163,6 @@ Additional pre-commit tasks:
 
     # Update pre-commit hooks to latest versions
     task pre-commit-update
-
-    # Uninstall pre-commit hooks
-    task pre-commit-uninstall
 ```
 
 The pre-commit hooks will run the following checks:
@@ -192,11 +178,12 @@ The pre-commit hooks will run the following checks:
 
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Create an issue
+2. Fork the repository
+3. Create your feature branch (`git checkout -b feature/amazing-feature`)
+4. Commit your changes (`git commit -m 'Add some amazing feature'`)
+5. Push to the branch (`git push origin feature/amazing-feature`)
+6. Open a Pull Request and note the issue in the PR title or description
 
 ## License
 
