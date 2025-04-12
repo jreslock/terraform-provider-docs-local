@@ -6,6 +6,7 @@
     "customizations": {
         "vscode": {
             "extensions": [
+                "amazonwebservices.aws-toolkit-vscode@3.46.0",
                 "golang.go",
                 "github.copilot",
                 "github.vscode-pull-request-github",
