@@ -1,4 +1,20 @@
 
+<a name="v0.0.20"></a>
+## [v0.0.20](https://github.com/jreslock/terraform-provider-docs-local/compare/v0.0.19...v0.0.20) (2025-04-12)
+
+### Chore
+
+* doc update to README.md ([#94](https://github.com/jreslock/terraform-provider-docs-local/issues/94))
+
+### Fix
+
+* Release workflow should handle single quotes ([#100](https://github.com/jreslock/terraform-provider-docs-local/issues/100))
+* Make release smarter ([#99](https://github.com/jreslock/terraform-provider-docs-local/issues/99))
+* Branch detection remote, branch arg, tests ([#97](https://github.com/jreslock/terraform-provider-docs-local/issues/97))
+* Flag parsing should only happen once ([#96](https://github.com/jreslock/terraform-provider-docs-local/issues/96))
+* Update devcontainer.json and providers.yaml ([#95](https://github.com/jreslock/terraform-provider-docs-local/issues/95))
+
+
 <a name="v0.0.19"></a>
 ## [v0.0.19](https://github.com/jreslock/terraform-provider-docs-local/compare/v0.0.18...v0.0.19) (2025-04-11)
 
