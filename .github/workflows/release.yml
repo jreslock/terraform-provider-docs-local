@@ -23,7 +23,10 @@ on:
 
 jobs:
   release:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' && contains(join(github.event.pull_request.labels.*.name, ','), 'bump:') || github.event_name == 'workflow_dispatch'
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main' ||
+      github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -40,14 +43,20 @@ jobs:
             echo "bump=${{ github.event.inputs.bump }}" >> $GITHUB_OUTPUT
           else
             echo "Checking for bump label..."
-            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[].name')
+            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r 'map(.name) | join(",")')
 
             echo "Labels: $LABELS"
-            if echo "$LABELS" | grep -q "bump:major"; then
+            BUMP_LABELS=$(echo "$LABELS" | grep -oE "bump:(major|minor|patch)" | sort | uniq)
+            BUMP_COUNT=$(echo "$BUMP_LABELS" | wc -l)
+
+            if [[ "$BUMP_COUNT" -gt 1 ]]; then
+              echo "Error: Multiple bump labels found: $BUMP_LABELS. Please use only one bump label." >&2
+              exit 1
+            elif [[ "$BUMP_LABELS" == *"bump:major"* ]]; then
               echo "bump=major" >> $GITHUB_OUTPUT
-            elif echo "$LABELS" | grep -q "bump:minor"; then
+            elif [[ "$BUMP_LABELS" == *"bump:minor"* ]]; then
               echo "bump=minor" >> $GITHUB_OUTPUT
-            elif echo "$LABELS" | grep -q "bump:patch"; then
+            elif [[ "$BUMP_LABELS" == *"bump:patch"* ]]; then
               echo "bump=patch" >> $GITHUB_OUTPUT
             else
               echo "No bump label found. Skipping workflow."
