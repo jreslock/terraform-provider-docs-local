@@ -43,7 +43,7 @@ jobs:
             echo "bump=${{ github.event.inputs.bump }}" >> $GITHUB_OUTPUT
           else
             echo "Checking for bump label..."
-            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r 'map(.name) | join(",")')
+            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r 'map(.name | gsub("'"; "")) | join(",")')
 
             echo "Labels: $LABELS"
             BUMP_LABELS=$(echo "$LABELS" | grep -oE "bump:(major|minor|patch)" | sort | uniq)
