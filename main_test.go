@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -483,4 +484,61 @@ func TestUpdateProvider(t *testing.T) {
 	// Verify the new file exists
 	_, err = os.Stat(filepath.Join(tmpDir, "test", "docs", "new.md"))
 	assert.NoError(t, err)
+}
+
+func TestCloneOneCommand(t *testing.T) {
+	// Set up a temporary config file
+	tmpfile, err := os.CreateTemp("", "config.*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Remove(tmpfile.Name()); err != nil {
+			t.Fatalf("failed to remove temporary file: %v", err)
+		}
+	}()
+
+	configContent := []byte(`
+    target_dir: test-providers
+    providers:
+      aws:
+        repo: hashicorp/terraform-provider-aws
+        description: AWS Provider
+`)
+	if _, err := tmpfile.Write(configContent); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up the cobra command
+	var configFile string
+	var providerName string
+
+	rootCmd := &cobra.Command{
+		Use:   "terraform-provider-docs-local",
+		Short: "A tool for managing Terraform provider documentation",
+	}
+
+	cloneOneCmd := &cobra.Command{
+		Use:   "clone-one",
+		Short: "Clone a specific provider",
+		Run: func(cmd *cobra.Command, args []string) {
+			assert.Equal(t, "aws", providerName)
+			assert.Equal(t, tmpfile.Name(), configFile)
+		},
+	}
+
+	cloneOneCmd.Flags().StringVarP(&providerName, "provider", "p", "", "Provider name for clone-one command")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Path to providers configuration file")
+	rootCmd.AddCommand(cloneOneCmd)
+
+	// Simulate command-line arguments
+	rootCmd.SetArgs([]string{"clone-one", "-c", tmpfile.Name(), "-p", "aws"})
+
+	// Execute the command
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Command execution failed: %v", err)
+	}
 }
