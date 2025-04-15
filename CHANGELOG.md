@@ -1,4 +1,12 @@
 
+<a name="v0.0.21"></a>
+## [v0.0.21](https://github.com/jreslock/terraform-provider-docs-local/compare/v0.0.20...v0.0.21) (2025-04-15)
+
+### Fix
+
+* Add clone-all command, update devcontainer ([#101](https://github.com/jreslock/terraform-provider-docs-local/issues/101))
+
+
 <a name="v0.0.20"></a>
 ## [v0.0.20](https://github.com/jreslock/terraform-provider-docs-local/compare/v0.0.19...v0.0.20) (2025-04-12)
 
