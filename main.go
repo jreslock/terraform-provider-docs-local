@@ -255,11 +255,45 @@ func main() {
 		},
 	}
 
+	cloneAllCmd := &cobra.Command{
+		Use:   "clone-all",
+		Short: "Clone all providers in the configuration",
+		Run: func(cmd *cobra.Command, args []string) {
+			config, err := loadConfig(configFile)
+			if err != nil {
+				log.Fatalf("Error loading config: %v", err)
+			}
+
+			if len(config.Providers) == 0 {
+				log.Fatal("Error: No providers found in configuration")
+			}
+
+			// Create target directory if it doesn't exist
+			if err := os.MkdirAll(config.TargetDir, 0755); err != nil {
+				log.Fatalf("Error creating target directory: %v", err)
+			}
+
+			for name, provider := range config.Providers {
+				if err := cloneProvider(name, provider, config.TargetDir, branch); err != nil {
+					log.Printf("Error cloning provider '%s': %v", name, err)
+					// Continue with other providers even if one fails
+					continue
+				}
+			}
+
+			if err := generateIndex(config); err != nil {
+				log.Fatalf("Error generating index: %v", err)
+			}
+		},
+	}
+
 	cloneOneCmd.Flags().StringVarP(&providerName, "provider", "p", "", "Provider name for clone-one command")
 	cloneOneCmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch to clone (default: detect from remote)")
+	cloneAllCmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch to clone for all providers (default: detect from remote)")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "providers.yaml", "Path to configuration file")
 
 	rootCmd.AddCommand(cloneOneCmd)
+	rootCmd.AddCommand(cloneAllCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("Error: %v", err)

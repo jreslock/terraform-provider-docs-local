@@ -368,3 +368,67 @@ func TestCloneOneCommandWithBranch(t *testing.T) {
 		t.Fatalf("Command execution failed: %v", err)
 	}
 }
+
+func TestCloneAllCommand(t *testing.T) {
+	// Set up a temporary config file
+	tmpfile, err := os.CreateTemp("", "config.*.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := os.Remove(tmpfile.Name()); err != nil {
+			t.Fatalf("failed to remove temporary file: %v", err)
+		}
+	}()
+
+	configContent := []byte(`
+    target_dir: test-providers
+    providers:
+      aws:
+        repo: hashicorp/terraform-provider-aws
+        description: AWS Provider
+      azurerm:
+        repo: hashicorp/terraform-provider-azurerm
+        description: Azure Provider
+`)
+	if _, err := tmpfile.Write(configContent); err != nil {
+		t.Fatal(err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Set up the cobra command
+	var configFile string
+	var branch string
+	var commandExecuted bool
+
+	rootCmd := &cobra.Command{
+		Use:   "terraform-provider-docs-local",
+		Short: "A tool for managing Terraform provider documentation",
+	}
+
+	cloneAllCmd := &cobra.Command{
+		Use:   "clone-all",
+		Short: "Clone all providers",
+		Run: func(cmd *cobra.Command, args []string) {
+			assert.Equal(t, tmpfile.Name(), configFile)
+			assert.Equal(t, "main", branch)
+			commandExecuted = true
+		},
+	}
+
+	cloneAllCmd.Flags().StringVarP(&branch, "branch", "b", "", "Branch to clone for all providers (default: detect from remote)")
+	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Path to providers configuration file")
+	rootCmd.AddCommand(cloneAllCmd)
+
+	// Simulate command-line arguments
+	rootCmd.SetArgs([]string{"clone-all", "-c", tmpfile.Name(), "-b", "main"})
+
+	// Execute the command
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Command execution failed: %v", err)
+	}
+
+	assert.True(t, commandExecuted, "clone-all command was not executed")
+}
