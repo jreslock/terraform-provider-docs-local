@@ -27,6 +27,9 @@
         }
     },
     "remoteUser": "root",
+    "postStartCommand": {
+        "safe-dir": "git config --global --add safe.directory ${containerWorkspaceFolder}"
+    },
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
     "workspaceFolder": "/workspace"
 }
