@@ -12,7 +12,6 @@ RUN apk update && \
     ca-certificates \
     curl \
     git \
-    golangci-lint \
     go-task-task \
     jq \
     pre-commit \
@@ -28,6 +27,11 @@ RUN ARCH=$(uname -m) && \
     rm -fr goreleaser.apk && \
     ARCH=$(uname -m) && \
     if [ "$ARCH" = "x86_64" ]; then ARCH="amd64"; elif [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; fi && \
+    # golangci-lint
+    curl -sSL -o golangci-lint.tar.gz https://github.com/golangci/golangci-lint/releases/download/v2.1.2/golangci-lint-2.1.2-linux-${ARCH}.tar.gz && \
+    tar --strip-components=1 -xzf golangci-lint.tar.gz -C /usr/local/bin golangci-lint-2.1.2-linux-${ARCH}/golangci-lint && \
+    chmod +x /usr/local/bin/golangci-lint && \
+    rm -fr golangci-lint.tar.gz && \
     # git-chglog
     curl -sSL -o git-chglog.tar.gz https://github.com/git-chglog/git-chglog/releases/download/v0.15.4/git-chglog_0.15.4_linux_${ARCH}.tar.gz && \
     tar xzf git-chglog.tar.gz -C /usr/local/bin git-chglog && \

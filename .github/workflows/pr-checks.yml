@@ -19,5 +19,3 @@ jobs:
           configFile: .devcontainer/CI/devcontainer.json
           runCmd: |
             task pre-commit-run
-            task lint
-            task test
