@@ -25,7 +25,8 @@ jobs:
   release:
     if: >
       github.event.pull_request.merged == true &&
-      github.event.pull_request.base.ref == 'main' ||
+      github.event.pull_request.base.ref == 'main' &&
+      contains(github.event.pull_request.labels.*.name, 'bump:') ||
       github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-latest
     permissions:
@@ -43,7 +44,12 @@ jobs:
             echo "bump=${{ github.event.inputs.bump }}" >> $GITHUB_OUTPUT
           else
             echo "Checking for bump label..."
-            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r 'map(.name | gsub("'"; "")) | join(",")')
+            LABELS=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r 'if length > 0 then map(.name) | join(",") else "" end')
+
+            if [[ -z "$LABELS" ]]; then
+              echo "No labels found on the pull request. Skipping workflow."
+              exit 0
+            fi
 
             echo "Labels: $LABELS"
             BUMP_LABELS=$(echo "$LABELS" | grep -oE "bump:(major|minor|patch)" | sort | uniq)
