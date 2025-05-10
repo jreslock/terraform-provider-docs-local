@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM public.ecr.aws/docker/library/golang:1.24.2-alpine
+FROM public.ecr.aws/docker/library/golang:1.24.3-alpine
 
 # Add binaries to PATH
 ENV PATH="/root/.local/bin:$(go env GOPATH)/bin:${PATH}"
